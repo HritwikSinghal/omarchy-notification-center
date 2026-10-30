@@ -2,6 +2,7 @@ import QtQuick
 import qs.Commons
 import qs.Commons as Commons
 
+import "Fonts.js" as Fonts
 import "History.js" as History
 
 // The scrolling history and the empty state that stands in for it. Whole rows
@@ -13,8 +14,8 @@ Column {
   property var rows: []
   property real lastSeen: 0
 
-  readonly property real rowHeight: Style.space(68)
-  readonly property real headerHeight: Style.space(24)
+  readonly property real rowHeight: Style.space(78)
+  readonly property real headerHeight: Style.space(28)
   readonly property int maxVisibleRows: 6
 
   // Rows grouped by app (History.groupByApp). A collapsed group keeps its
@@ -70,8 +71,8 @@ Column {
       horizontalAlignment: Text.AlignHCenter
       text: root.tr.t("panel.empty")
       color: Util.alpha(Commons.Color.popups.text, 0.6)
-      font.family: Style.font.family
-      font.pixelSize: Style.font.body
+      font.family: Fonts.text
+      font.pixelSize: Style.font.subtitle
       wrapMode: Text.WordWrap
       textFormat: Text.PlainText
     }
@@ -114,15 +115,15 @@ Column {
             text: entry.groupCollapsed ? "\uf054" : "\uf078"
             color: Util.alpha(Commons.Color.popups.text, 0.45)
             font.family: Style.font.family
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Style.font.body
             textFormat: Text.PlainText
             anchors.verticalCenter: parent.verticalCenter
           }
           Text {
             text: String(entry.row.app || entry.row.source || root.tr.t("panel.otherApp"))
             color: Util.alpha(Commons.Color.popups.text, 0.8)
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
+            font.family: Fonts.text
+            font.pixelSize: Style.font.body
             font.bold: true
             textFormat: Text.PlainText
             anchors.verticalCenter: parent.verticalCenter
@@ -130,8 +131,8 @@ Column {
           Text {
             text: String(entry.item.groupSize || 0)
             color: Util.alpha(Commons.Color.popups.text, 0.45)
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
+            font.family: Fonts.text
+            font.pixelSize: Style.font.body
             textFormat: Text.PlainText
             anchors.verticalCenter: parent.verticalCenter
           }

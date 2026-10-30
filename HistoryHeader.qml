@@ -2,6 +2,8 @@ import QtQuick
 import qs.Commons
 import qs.Commons as Commons
 
+import "Fonts.js" as Fonts
+
 // Title on the left, the count as a pill on the right. The panel injects the
 // catalog, so this file owns the pill's copy and nothing else.
 Item {
@@ -20,8 +22,8 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     text: root.tr.t("panel.title")
     color: Commons.Color.popups.text
-    font.family: Style.font.family
-    font.pixelSize: Style.font.title
+    font.family: Fonts.text
+    font.pixelSize: Style.font.heading
     font.bold: true
     textFormat: Text.PlainText
   }
@@ -45,8 +47,8 @@ Item {
             ? root.tr.t("panel.unread").arg(Commons.I18n.formatNumber(root.unread))
             : root.tr.t("panel.allRead").arg(Commons.I18n.formatNumber(root.total))
       color: root.unread > 0 ? Commons.Color.accent : Util.alpha(Commons.Color.popups.text, 0.7)
-      font.family: Style.font.family
-      font.pixelSize: Style.font.caption
+      font.family: Fonts.text
+      font.pixelSize: Style.font.bodySmall
       font.bold: root.unread > 0
       textFormat: Text.PlainText
     }

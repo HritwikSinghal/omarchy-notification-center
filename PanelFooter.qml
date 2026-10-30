@@ -1,6 +1,8 @@
 import QtQuick
 import qs.Commons
 import qs.Commons as Commons
+
+import "Fonts.js" as Fonts
 import qs.Ui
 
 // The bottom of the panel: temporary feedback, the rule before the actions, the
@@ -26,8 +28,8 @@ Column {
     visible: root.feedback !== ""
     text: root.feedback
     color: Util.alpha(Commons.Color.popups.text, 0.65)
-    font.family: Style.font.family
-    font.pixelSize: Style.font.caption
+    font.family: Fonts.text
+    font.pixelSize: Style.font.body
     horizontalAlignment: Text.AlignHCenter
     elide: Text.ElideRight
     textFormat: Text.PlainText
@@ -55,7 +57,7 @@ Column {
         foreground: Commons.Color.popups.text
         background: Commons.Color.popups.background
         accent: Commons.Color.accent
-        fontFamily: Style.font.family
+        fontFamily: Fonts.text
       }
 
       Button {
@@ -64,7 +66,7 @@ Column {
         foreground: Commons.Color.popups.text
         background: Commons.Color.popups.background
         accent: Commons.Color.accent
-        fontFamily: Style.font.family
+        fontFamily: Fonts.text
       }
 
       Button {
@@ -73,7 +75,7 @@ Column {
         foreground: Commons.Color.popups.text
         background: Commons.Color.popups.background
         accent: Commons.Color.accent
-        fontFamily: Style.font.family
+        fontFamily: Fonts.text
       }
     }
 
@@ -85,7 +87,7 @@ Column {
       foreground: Util.alpha(Commons.Color.popups.text, 0.7)
       background: Commons.Color.popups.background
       accent: Commons.Color.accent
-      fontFamily: Style.font.family
+      fontFamily: Fonts.text
     }
   }
 }

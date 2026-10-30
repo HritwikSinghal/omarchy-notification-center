@@ -15,7 +15,7 @@ Item {
   // old screen-centred placement used by a keybind or menu summon.
   property real anchorX: -1
 
-  readonly property real cardWidth: Style.space(540)
+  readonly property real cardWidth: Style.space(600)
   readonly property real edgeMargin: Style.space(12)
 
   function cardX(available) {
