@@ -332,10 +332,10 @@ Item {
             historyList.clearSelection()
           }
           onDismissRequested: root.dismiss()
-          onNavigateRequested: historyList.moveSelection(delta)
+          onNavigateRequested: function(delta) { historyList.moveSelection(delta) }
           onActivateRequested: historyList.activateSelected()
-          onDeleteRequested: wholeGroup ? historyList.dismissSelectedGroup() : historyList.dismissSelected()
-          onCollapseRequested: historyList.setSelectedGroupCollapsed(collapse)
+          onDeleteRequested: function(wholeGroup) { wholeGroup ? historyList.dismissSelectedGroup() : historyList.dismissSelected() }
+          onCollapseRequested: function(collapse) { historyList.setSelectedGroupCollapsed(collapse) }
           onClearSelectionRequested: historyList.clearSelection()
         },
         HistoryList {
@@ -347,9 +347,9 @@ Item {
           // Two thirds of the screen: tall enough to scan a day's history,
           // short enough that the header and footer stay on screen.
           maxHeight: surface.height * 0.65
-          onActivated: root.activateEntry(entry)
-          onRemoveRequested: root.hideEntry(key)
-          onRemoveGroupRequested: root.hideEntries(keys)
+          onActivated: function(entry) { root.activateEntry(entry) }
+          onRemoveRequested: function(key) { root.hideEntry(key) }
+          onRemoveGroupRequested: function(keys) { root.hideEntries(keys) }
         },
         PanelFooter {
           tr: strings
