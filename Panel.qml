@@ -293,6 +293,9 @@ Item {
           tr: strings
           rows: root.entries
           lastSeen: root.lastSeen
+          // Two thirds of the screen: tall enough to scan a day's history,
+          // short enough that the header and footer stay on screen.
+          maxHeight: surface.height * 0.65
           onActivated: root.activateEntry(entry)
           onRemoveRequested: root.hideEntry(key)
         },

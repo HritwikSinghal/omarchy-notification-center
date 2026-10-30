@@ -16,7 +16,8 @@ Column {
 
   readonly property real rowHeight: Style.space(78)
   readonly property real headerHeight: Style.space(28)
-  readonly property int maxVisibleRows: 6
+  // Tallest the list may grow; the panel sets it from the screen height.
+  property real maxHeight: Style.space(480)
 
   // Rows grouped by app (History.groupByApp). A collapsed group keeps its
   // header and newest row. Collapse state lives only as long as the panel.
@@ -81,13 +82,15 @@ Column {
   ListView {
     id: list
     width: parent.width
-    // The first maxVisibleRows entries, each with its group header if it opens
-    // one, so a header never pushes the last row half out of view.
+    // As many whole entries as fit under maxHeight, each with its group header
+    // if it opens one, so the list never ends mid-row. Always at least one.
     height: {
-      var shown = Math.min(root.shownCount, root.maxVisibleRows)
       var total = 0
-      for (var i = 0; i < shown; i++)
-        total += root.rowHeight + (root.items[i].groupStart ? root.headerHeight : 0) + Style.space(2)
+      for (var i = 0; i < root.shownCount; i++) {
+        var next = total + root.rowHeight + (root.items[i].groupStart ? root.headerHeight : 0) + Style.space(2)
+        if (i > 0 && next - Style.space(2) > root.maxHeight) break
+        total = next
+      }
       return Math.max(0, total - Style.space(2))
     }
     visible: root.rows.length > 0
