@@ -66,6 +66,11 @@ Item {
   property string navigationFeedback: ""
   readonly property var entries: History.visibleRows(root.allEntries, root.historyState())
 
+  // The search line's text, and the rows it lets through. Footer actions still
+  // act on every visible row, not just the matches.
+  property string query: ""
+  readonly property var shownEntries: History.filterRows(root.entries, root.query)
+
   readonly property int unread: History.unreadCount(root.allEntries, root.historyState())
 
   function historyState() {
@@ -120,9 +125,12 @@ Item {
     try { x = Number(JSON.parse(payloadJson || "{}").anchorX) } catch (e) { x = -1 }
     root.anchorX = isFinite(x) && x > 0 ? x : -1
     root.opened = true;
+    // Every open starts unfiltered, with the keyboard in the search line, so
+    // typing searches at once and Esc still closes.
+    searchField.clear();
     Qt.callLater(function () {
       if (root.opened)
-        surface.grabFocus();
+        searchField.focusInput();
     });
   }
 
@@ -297,9 +305,16 @@ Item {
           unread: root.unread
           total: root.entries.length
         },
+        SearchField {
+          id: searchField
+          tr: strings
+          onTextChanged: root.query = text
+          onDismissRequested: root.dismiss()
+        },
         HistoryList {
           tr: strings
-          rows: root.entries
+          rows: root.shownEntries
+          emptyText: root.query !== "" ? strings.t("panel.noMatches") : strings.t("panel.empty")
           lastSeen: root.lastSeen
           // Two thirds of the screen: tall enough to scan a day's history,
           // short enough that the header and footer stay on screen.

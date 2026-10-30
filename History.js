@@ -147,6 +147,24 @@ function markRead(state, rows, now) {
   return next
 }
 
+// Whether a row matches a search query: every whitespace-separated word must
+// appear, case-insensitively, in its app, source, title or body. An empty
+// query matches every row.
+function matchesQuery(row, query) {
+  var words = String(query || "").toLowerCase().split(/\s+/).filter(function(word) { return word !== "" })
+  if (words.length === 0) return true
+  var fields = [row && row.app, row && row.source, row && row.summary, row && row.body]
+  var haystack = fields.map(function(value) { return String(value || "") }).join("\n").toLowerCase()
+  for (var i = 0; i < words.length; i++)
+    if (haystack.indexOf(words[i]) < 0) return false
+  return true
+}
+
+function filterRows(rows, query) {
+  var source = Array.isArray(rows) ? rows : []
+  return source.filter(function(row) { return matchesQuery(row, query) })
+}
+
 // The app a row is grouped under: its app name, else its source, compared
 // case-insensitively. "" when it has neither; those form one group of their own.
 function appKey(row) {

@@ -16,5 +16,7 @@
   "bell.unread": "%1 unread",
   "bell.silenced": "Notifications silenced",
   "bell.silencedUnread": "%1 unread · notifications silenced",
-  "panel.navigationUnavailable": "This notification can’t be opened safely."
+  "panel.navigationUnavailable": "This notification can’t be opened safely.",
+  "panel.search": "Search app, title or body",
+  "panel.noMatches": "No notifications match."
 }

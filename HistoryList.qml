@@ -16,6 +16,8 @@ Column {
 
   readonly property real rowHeight: Style.space(78)
   readonly property real headerHeight: Style.space(28)
+  // What the empty state says: the panel swaps in "no matches" while searching.
+  property string emptyText: ""
   // Tallest the list may grow; the panel sets it from the screen height.
   property real maxHeight: Style.space(480)
 
@@ -70,7 +72,7 @@ Column {
     Text {
       width: parent.width
       horizontalAlignment: Text.AlignHCenter
-      text: root.tr.t("panel.empty")
+      text: root.emptyText !== "" ? root.emptyText : root.tr.t("panel.empty")
       color: Util.alpha(Commons.Color.popups.text, 0.6)
       font.family: Fonts.text
       font.pixelSize: Style.font.subtitle
