@@ -3,6 +3,7 @@ import qs.Commons
 import qs.Commons as Commons
 
 import "Fonts.js" as Fonts
+import "Art.js" as Art
 import "History.js" as History
 
 // The scrolling history and the empty state that stands in for it. Whole rows
@@ -16,6 +17,8 @@ Column {
 
   readonly property real rowHeight: Style.space(88)
   readonly property real headerHeight: Style.space(36)
+  // The panel's track-cover cache (ArtRecorder); media rows look theirs up.
+  property var artEntries: []
   // What the empty state says: the panel swaps in "no matches" while searching.
   property string emptyText: ""
   // Tallest the list may grow; the panel sets it from the screen height.
@@ -355,6 +358,7 @@ Column {
           tr: root.tr
           row: entry.row
           isUnread: Number(entry.row.ts || 0) > root.lastSeen
+          artUrl: Art.lookup(root.artEntries, entry.row)
           selected: entry.index === root.currentIndex
 
           onActivated: root.activated(entry.row)

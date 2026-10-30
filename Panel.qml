@@ -39,6 +39,11 @@ Item {
   Navigator {
     id: navigator
   }
+
+  // Track covers for media rows; always running, since the panel stays loaded.
+  ArtRecorder {
+    id: artRecorder
+  }
   readonly property var notifService: (root.shell && root.shell.firstPartyServiceFor)
     ? root.shell.firstPartyServiceFor("omarchy.notifications")
     : null
@@ -342,6 +347,7 @@ Item {
           id: historyList
           tr: strings
           rows: root.shownEntries
+          artEntries: artRecorder.entries
           emptyText: root.query !== "" ? strings.t("panel.noMatches") : strings.t("panel.empty")
           lastSeen: root.lastSeen
           // Two thirds of the screen: tall enough to scan a day's history,

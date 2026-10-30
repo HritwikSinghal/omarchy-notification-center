@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import qs.Commons
 import qs.Commons as Commons
@@ -15,6 +16,8 @@ Rectangle {
   property var row: ({})
   property bool isUnread: false
   property real rowHeight: Style.space(88)
+  // The track's cover for a media row, from the panel's art cache; "" for none.
+  property string artUrl: ""
 
   // The app's icon: the notification's own app_icon when it sent one (a path
   // or a theme name), else the icon of the desktop entry its app name matches.
@@ -95,7 +98,9 @@ Rectangle {
     visible: rowItem.isUnread
   }
 
-  // App thumbnail: the app's icon, else the row's glyph (or a bell) on a tile.
+  // Thumbnail: the track's cover for a media row (Art.js), with the app's icon
+  // as a corner badge; else the app's icon; else the row's glyph (or a bell)
+  // on a tile. A cover that fails to load falls back to the icon.
   Rectangle {
     id: thumb
     anchors.left: dot.right
@@ -104,14 +109,50 @@ Rectangle {
     width: Style.space(40)
     height: width
     radius: Style.space(6)
-    color: icon.status === Image.Ready ? "transparent" : Util.alpha(Commons.Color.popups.text, 0.08)
+    readonly property bool showArt: cover.status === Image.Ready
+    color: thumb.showArt || icon.status === Image.Ready
+      ? "transparent" : Util.alpha(Commons.Color.popups.text, 0.08)
+
+    // A photo fills its square and is rounded like the card, the way the
+    // notification popup draws one (Toast.qml).
+    Image {
+      id: cover
+      anchors.fill: parent
+      source: rowItem.artUrl
+      sourceSize.width: width * 2
+      sourceSize.height: height * 2
+      fillMode: Image.PreserveAspectCrop
+      asynchronous: true
+      smooth: true
+      visible: thumb.showArt
+      layer.enabled: visible
+      layer.effect: MultiEffect {
+        maskEnabled: true
+        maskSource: coverMask
+      }
+    }
+
+    Rectangle {
+      id: coverMask
+      anchors.fill: parent
+      visible: false
+      layer.enabled: true
+      radius: thumb.radius
+      color: "black"
+    }
 
     Image {
       id: icon
-      anchors.fill: parent
+      // Full size on its own; a corner badge over a cover.
+      width: thumb.showArt ? Style.space(18) : parent.width
+      height: width
+      anchors.right: parent.right
+      anchors.bottom: parent.bottom
+      anchors.rightMargin: thumb.showArt ? -Style.space(4) : 0
+      anchors.bottomMargin: thumb.showArt ? -Style.space(4) : 0
       source: rowItem.iconSource
-      sourceSize.width: width * 2
-      sourceSize.height: height * 2
+      sourceSize.width: Style.space(40) * 2
+      sourceSize.height: Style.space(40) * 2
       fillMode: Image.PreserveAspectFit
       asynchronous: true
       smooth: true
@@ -120,7 +161,7 @@ Rectangle {
 
     Text {
       anchors.centerIn: parent
-      visible: icon.status !== Image.Ready
+      visible: !thumb.showArt && icon.status !== Image.Ready
       text: String(rowItem.row.glyph || "\uf0f3")
       color: Util.alpha(Commons.Color.popups.text, 0.7)
       font.family: Style.font.family
