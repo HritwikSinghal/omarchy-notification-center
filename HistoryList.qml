@@ -109,13 +109,13 @@ Column {
     }
   }
 
-  // Wheel distance in pixels: one mouse notch (120 units) moves five rows;
-  // touchpad pixel deltas are scaled 8x. Flickable's own wheel handling moved
+  // Wheel distance in pixels: one mouse notch (120 units) moves ten rows;
+  // touchpad pixel deltas are scaled 16x. Flickable's own wheel handling moved
   // a fraction of a row per notch. The touchpad gain also makes up for
   // Hyprland's touchpad scroll_factor 0.5, which halves the deltas before they
   // arrive. Both tuned up by feel, from 1.5 rows / 2x.
-  readonly property real notchPixels: root.rowHeight * 5
-  readonly property real touchpadGain: 8
+  readonly property real notchPixels: root.rowHeight * 10
+  readonly property real touchpadGain: 16
 
   signal activated(var entry)
   signal removeRequested(string key)
