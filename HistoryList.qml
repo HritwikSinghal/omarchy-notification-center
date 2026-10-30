@@ -81,7 +81,15 @@ Column {
   ListView {
     id: list
     width: parent.width
-    height: Math.min(root.shownCount, root.maxVisibleRows) * (root.rowHeight + Style.space(2)) - Style.space(2)
+    // The first maxVisibleRows entries, each with its group header if it opens
+    // one, so a header never pushes the last row half out of view.
+    height: {
+      var shown = Math.min(root.shownCount, root.maxVisibleRows)
+      var total = 0
+      for (var i = 0; i < shown; i++)
+        total += root.rowHeight + (root.items[i].groupStart ? root.headerHeight : 0) + Style.space(2)
+      return Math.max(0, total - Style.space(2))
+    }
     visible: root.rows.length > 0
     clip: true
     model: root.shownCount
