@@ -110,6 +110,24 @@ Column {
     else root.select(Math.max(0, Math.min(root.shownCount - 1, root.currentIndex + delta)))
   }
 
+  // Tab and Shift+Tab: the first row of the next or previous group. From no
+  // selection, the first or the last group. Stops at either end.
+  function moveGroup(delta) {
+    var starts = []
+    for (var i = 0; i < root.shownCount; i++)
+      if (root.items[i].groupStart) starts.push(i)
+    if (starts.length === 0) return
+    if (!root.hasSelection) {
+      root.select(delta > 0 ? starts[0] : starts[starts.length - 1])
+      return
+    }
+    // The group the selection is in: the last start at or before it.
+    var at = 0
+    for (var j = 0; j < starts.length; j++)
+      if (starts[j] <= root.currentIndex) at = j
+    root.select(starts[Math.max(0, Math.min(starts.length - 1, at + (delta > 0 ? 1 : -1)))])
+  }
+
   function selectedRow() {
     return root.hasSelection ? root.items[root.currentIndex].row : null
   }

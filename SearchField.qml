@@ -8,7 +8,8 @@ import "Fonts.js" as Fonts
 // (History.matchesQuery). A plain TextInput rather than the shell's
 // FilterInput, which is append-only because the menu owns the arrow keys; here
 // the query is ordinary editable text. It also carries the list's keyboard
-// navigation (arrows, Enter, Delete); Esc steps back selection, query, panel.
+// navigation (arrows by row, Tab by group, Enter, Delete); Esc steps back
+// selection, query, panel.
 Rectangle {
   id: root
 
@@ -22,6 +23,7 @@ Rectangle {
   // Keyboard navigation of the list, which never takes focus itself: the
   // search line keeps it so typing always searches.
   signal navigateRequested(int delta)
+  signal groupNavigateRequested(int delta)
   signal activateRequested()
   signal deleteRequested(bool wholeGroup)
   signal collapseRequested(bool collapse)
@@ -76,8 +78,9 @@ Rectangle {
 
     Keys.onUpPressed: function(event) { root.navigateRequested(-1); event.accepted = true }
     Keys.onDownPressed: function(event) { root.navigateRequested(1); event.accepted = true }
-    Keys.onTabPressed: function(event) { root.navigateRequested(1); event.accepted = true }
-    Keys.onBacktabPressed: function(event) { root.navigateRequested(-1); event.accepted = true }
+    // Tab and Shift+Tab jump between app groups; the arrows go row by row.
+    Keys.onTabPressed: function(event) { root.groupNavigateRequested(1); event.accepted = true }
+    Keys.onBacktabPressed: function(event) { root.groupNavigateRequested(-1); event.accepted = true }
 
     Keys.onReturnPressed: function(event) {
       if (root.hasSelection) root.activateRequested()

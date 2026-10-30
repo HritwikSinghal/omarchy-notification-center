@@ -379,6 +379,7 @@ Item {
           }
           onDismissRequested: root.dismiss()
           onNavigateRequested: function(delta) { historyList.moveSelection(delta) }
+          onGroupNavigateRequested: function(delta) { historyList.moveGroup(delta) }
           onActivateRequested: historyList.activateSelected()
           onDeleteRequested: function(wholeGroup) { wholeGroup ? historyList.dismissSelectedGroup() : historyList.dismissSelected() }
           onCollapseRequested: function(collapse) { historyList.setSelectedGroupCollapsed(collapse) }
