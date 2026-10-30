@@ -35,6 +35,57 @@ Column {
   }
   readonly property int shownCount: root.items.length
 
+  // The view's model holds only each shown row's key, kept in step with
+  // `items` by syncModel() as inserts, moves and removals rather than a reset,
+  // so ListView can animate rows in and out (collapse, expand, dismiss,
+  // search). Delegates look their row up by key. A row without a key, or a
+  // repeated one, gets a positional stand-in; such rows just do not animate.
+  readonly property var itemKeys: {
+    var out = [], seen = new Set()
+    for (var i = 0; i < root.items.length; i++) {
+      var key = String((root.items[i].row && root.items[i].row.key) || "")
+      if (key === "" || seen.has(key)) key = "row-" + i
+      seen.add(key)
+      out.push(key)
+    }
+    return out
+  }
+  readonly property var itemByKey: {
+    var map = new Map()
+    for (var i = 0; i < root.itemKeys.length; i++) map.set(root.itemKeys[i], root.items[i])
+    return map
+  }
+
+  ListModel {
+    id: rowModel
+  }
+
+  function syncModel() {
+    var target = root.itemKeys
+    var wanted = new Set(target)
+    for (var i = rowModel.count - 1; i >= 0; i--)
+      if (!wanted.has(rowModel.get(i).key)) rowModel.remove(i)
+    for (var j = 0; j < target.length; j++) {
+      if (j < rowModel.count && rowModel.get(j).key === target[j]) continue
+      var at = -1
+      for (var k = j + 1; k < rowModel.count; k++) {
+        if (rowModel.get(k).key === target[j]) {
+          at = k
+          break
+        }
+      }
+      if (at >= 0) rowModel.move(at, j, 1)
+      else rowModel.insert(j, { key: target[j] })
+    }
+    while (rowModel.count > target.length) rowModel.remove(rowModel.count - 1)
+  }
+
+  onItemKeysChanged: root.syncModel()
+  Component.onCompleted: root.syncModel()
+
+  // Row motion: arrivals fade in, departures fade out, the rest slide.
+  readonly property int motionDuration: 180
+
   // The keyboard selection, an index into `items`; -1 when nothing is
   // selected. The panel drives it from the search line's keys. When rows go
   // away it stays on the same slot, which now holds the next row.
@@ -164,16 +215,75 @@ Column {
       }
       return Math.max(0, total - Style.space(2))
     }
+    // The card resizes with the rows instead of jumping.
+    Behavior on height {
+      NumberAnimation {
+        duration: root.motionDuration
+        easing.type: Easing.OutCubic
+      }
+    }
     visible: root.rows.length > 0
     clip: true
-    model: root.shownCount
+    model: rowModel
     spacing: Style.space(2)
     boundsBehavior: Flickable.StopAtBounds
+
+    add: Transition {
+      NumberAnimation {
+        property: "opacity"
+        from: 0
+        to: 1
+        duration: root.motionDuration
+        easing.type: Easing.OutCubic
+      }
+    }
+    remove: Transition {
+      ParallelAnimation {
+        NumberAnimation {
+          property: "opacity"
+          to: 0
+          duration: root.motionDuration
+          easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+          property: "x"
+          to: Style.space(24)
+          duration: root.motionDuration
+          easing.type: Easing.OutCubic
+        }
+      }
+    }
+    displaced: Transition {
+      NumberAnimation {
+        properties: "x,y"
+        duration: root.motionDuration
+        easing.type: Easing.OutCubic
+      }
+      // A row displaced mid-arrival must still end fully shown.
+      NumberAnimation {
+        property: "opacity"
+        to: 1
+        duration: root.motionDuration
+      }
+    }
+    move: Transition {
+      NumberAnimation {
+        properties: "x,y"
+        duration: root.motionDuration
+        easing.type: Easing.OutCubic
+      }
+    }
 
     delegate: Column {
       id: entry
       required property int index
-      readonly property var item: root.items[index] || ({ row: {}, groupStart: false, groupSize: 0 })
+      required property string key
+      // The row as last looked up. A departing delegate's key is gone from
+      // itemByKey, so it keeps what it last showed while it fades out.
+      readonly property var lookup: root.itemByKey.get(entry.key)
+      property var item: ({ row: {}, groupStart: false, groupSize: 0 })
+      onLookupChanged: if (entry.lookup) entry.item = entry.lookup
+      Component.onCompleted: if (entry.lookup) entry.item = entry.lookup
       readonly property var row: entry.item.row || ({})
       readonly property string groupKey: History.appKey(entry.row)
       readonly property bool groupCollapsed: root.collapsed.indexOf(entry.groupKey) >= 0
@@ -201,8 +311,15 @@ Column {
           spacing: Style.space(8)
 
           Text {
-            // nf-fa chevron_right / chevron_down
-            text: entry.groupCollapsed ? "\uf054" : "\uf078"
+            // nf-fa chevron_down, turned to point right while collapsed.
+            text: "\uf078"
+            rotation: entry.groupCollapsed ? -90 : 0
+            Behavior on rotation {
+              NumberAnimation {
+                duration: root.motionDuration
+                easing.type: Easing.OutCubic
+              }
+            }
             color: Util.alpha(Commons.Color.popups.text, 0.45)
             font.family: Style.font.family
             font.pixelSize: Style.font.body
