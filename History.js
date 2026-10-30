@@ -146,3 +146,29 @@ function markRead(state, rows, now) {
   next.lastSeen = Math.max(next.lastSeen, at, newest)
   return next
 }
+
+// The app a row is grouped under: its app name, else its source, compared
+// case-insensitively. "" when it has neither; those form one group of their own.
+function appKey(row) {
+  return String((row && (row.app || row.source)) || "").trim().toLowerCase()
+}
+
+// Rows regrouped by app for display, as [{ row, groupStart, groupSize }]. The
+// input is newest first, so a group sits where its newest row stood and keeps
+// its rows newest first. A Map, not an object, so an app named "__proto__"
+// cannot reach the prototype.
+function groupByApp(rows) {
+  var source = Array.isArray(rows) ? rows : []
+  var groups = new Map()
+  for (var i = 0; i < source.length; i++) {
+    var key = appKey(source[i])
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(source[i])
+  }
+  var out = []
+  groups.forEach(function(members) {
+    for (var j = 0; j < members.length; j++)
+      out.push({ row: members[j], groupStart: j === 0, groupSize: members.length })
+  })
+  return out
+}

@@ -11,6 +11,7 @@
   "time.days": "%1 d ago",
   "panel.closeAll": "Close all",
   "panel.clear": "Clear history",
+  "panel.otherApp": "Other",
   "bell.history": "Notification history",
   "bell.unread": "%1 unread",
   "bell.silenced": "Notifications silenced",
