@@ -60,6 +60,14 @@ function record(entries, track, now) {
 
 // The cover for a history row, or "". Its title is `summary`, its artists
 // `body` (what tidal-hifi and most players send).
+// A remote cover outlives a local one: Chromium-based players (tidal-hifi's
+// second MPRIS endpoint) hand out file:///tmp/.org.chromium.* copies that are
+// deleted soon after, while the app's own endpoint gives the same cover as
+// https. Among equally good matches the https one wins.
+function lasting(entry) {
+  return /^https:/i.test(String(entry.art))
+}
+
 function lookup(entries, row) {
   var title = norm(row && row.summary)
   if (title === "" || !Array.isArray(entries)) return ""
@@ -69,10 +77,12 @@ function lookup(entries, row) {
   for (var i = 0; i < entries.length; i++) {
     var entry = entries[i]
     if (!validEntry(entry) || norm(entry.title) !== title) continue
-    // Entries are newest first, so the first exact match is the latest play.
-    if (exact === null && artist !== "" && norm(entry.artist) === artist) exact = entry
+    // Entries are newest first, so the first exact match is the latest play;
+    // a later https one still replaces a local file.
+    if (artist !== "" && norm(entry.artist) === artist
+        && (exact === null || (!lasting(exact) && lasting(entry)))) exact = entry
     var gap = Math.abs(Number(entry.ts) - ts)
-    if (gap <= WINDOW && gap < nearGap) {
+    if (gap <= WINDOW && (gap < nearGap || (near && !lasting(near) && lasting(entry)))) {
       near = entry
       nearGap = gap
     }
