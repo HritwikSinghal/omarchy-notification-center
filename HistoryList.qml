@@ -14,8 +14,8 @@ Column {
   property var rows: []
   property real lastSeen: 0
 
-  readonly property real rowHeight: Style.space(78)
-  readonly property real headerHeight: Style.space(32)
+  readonly property real rowHeight: Style.space(88)
+  readonly property real headerHeight: Style.space(36)
   // What the empty state says: the panel swaps in "no matches" while searching.
   property string emptyText: ""
   // Tallest the list may grow; the panel sets it from the screen height.
@@ -195,7 +195,7 @@ Column {
       text: root.emptyText !== "" ? root.emptyText : root.tr.t("panel.empty")
       color: Util.alpha(Commons.Color.popups.text, 0.6)
       font.family: Fonts.text
-      font.pixelSize: Style.font.subtitle
+      font.pixelSize: Fonts.px(Style.font.body, Fonts.body)
       wrapMode: Text.WordWrap
       textFormat: Text.PlainText
     }
@@ -322,7 +322,7 @@ Column {
             }
             color: Util.alpha(Commons.Color.popups.text, 0.45)
             font.family: Style.font.family
-            font.pixelSize: Style.font.body
+            font.pixelSize: Fonts.px(Style.font.body, Fonts.meta)
             textFormat: Text.PlainText
             anchors.verticalCenter: parent.verticalCenter
           }
@@ -330,7 +330,7 @@ Column {
             text: String(entry.row.app || entry.row.source || root.tr.t("panel.otherApp"))
             color: Util.alpha(Commons.Color.popups.text, 0.8)
             font.family: Fonts.text
-            font.pixelSize: Style.font.body
+            font.pixelSize: Fonts.px(Style.font.body, Fonts.meta)
             font.bold: true
             textFormat: Text.PlainText
             anchors.verticalCenter: parent.verticalCenter
@@ -339,7 +339,7 @@ Column {
             text: String(entry.item.groupSize || 0)
             color: Util.alpha(Commons.Color.popups.text, 0.45)
             font.family: Fonts.text
-            font.pixelSize: Style.font.body
+            font.pixelSize: Fonts.px(Style.font.body, Fonts.small)
             textFormat: Text.PlainText
             anchors.verticalCenter: parent.verticalCenter
           }

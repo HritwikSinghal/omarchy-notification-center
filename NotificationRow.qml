@@ -14,7 +14,7 @@ Rectangle {
   required property var tr
   property var row: ({})
   property bool isUnread: false
-  property real rowHeight: Style.space(78)
+  property real rowHeight: Style.space(88)
 
   // The app's icon: the notification's own app_icon when it sent one (a path
   // or a theme name), else the icon of the desktop entry its app name matches.
@@ -101,7 +101,7 @@ Rectangle {
     anchors.left: dot.right
     anchors.leftMargin: Style.space(8)
     anchors.verticalCenter: parent.verticalCenter
-    width: Style.space(36)
+    width: Style.space(40)
     height: width
     radius: Style.space(6)
     color: icon.status === Image.Ready ? "transparent" : Util.alpha(Commons.Color.popups.text, 0.08)
@@ -148,9 +148,9 @@ Rectangle {
         anchors.right: timeText.left
         anchors.rightMargin: Style.space(8)
         text: String(rowItem.row.app || rowItem.row.source || "")
-        color: Util.alpha(Commons.Color.popups.text, 0.6)
+        color: Util.alpha(Commons.Color.popups.text, 0.7)
         font.family: Fonts.text
-        font.pixelSize: Style.font.body
+        font.pixelSize: Fonts.px(Style.font.body, Fonts.meta)
         elide: Text.ElideRight
         textFormat: Text.PlainText
       }
@@ -159,9 +159,9 @@ Rectangle {
         id: timeText
         anchors.right: parent.right
         text: rowItem.ago(rowItem.row.ts)
-        color: Util.alpha(Commons.Color.popups.text, 0.5)
+        color: Util.alpha(Commons.Color.popups.text, 0.6)
         font.family: Fonts.text
-        font.pixelSize: Style.font.body
+        font.pixelSize: Fonts.px(Style.font.body, Fonts.meta)
         textFormat: Text.PlainText
       }
     }
@@ -171,7 +171,7 @@ Rectangle {
       text: String(rowItem.row.summary || "")
       color: Commons.Color.popups.text
       font.family: Fonts.text
-      font.pixelSize: Style.font.title
+      font.pixelSize: Fonts.px(Style.font.body, Fonts.summary)
       font.weight: Font.DemiBold
       wrapMode: Text.WordWrap
       maximumLineCount: 1
@@ -185,7 +185,7 @@ Rectangle {
       text: String(rowItem.row.body || "")
       color: Util.alpha(Commons.Color.popups.text, 0.8)
       font.family: Fonts.text
-      font.pixelSize: Style.font.subtitle
+      font.pixelSize: Fonts.px(Style.font.body, Fonts.body)
       wrapMode: Text.WordWrap
       maximumLineCount: 1
       elide: Text.ElideRight

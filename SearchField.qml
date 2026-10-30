@@ -31,7 +31,7 @@ Rectangle {
   function clear() { input.text = "" }
 
   width: parent ? parent.width : 0
-  height: Style.space(36)
+  height: Style.space(40)
   radius: Style.space(6)
   color: Util.alpha(Commons.Color.popups.text, 0.06)
   border.width: 1
@@ -55,7 +55,7 @@ Rectangle {
     text: "\uf002"
     color: Util.alpha(Commons.Color.popups.text, 0.5)
     font.family: Style.font.family
-    font.pixelSize: Style.font.body
+    font.pixelSize: Fonts.px(Style.font.body, Fonts.meta)
     textFormat: Text.PlainText
   }
 
@@ -70,7 +70,7 @@ Rectangle {
     selectionColor: Util.alpha(Commons.Color.accent, 0.4)
     selectedTextColor: Commons.Color.popups.text
     font.family: Fonts.text
-    font.pixelSize: Style.font.subtitle
+    font.pixelSize: Fonts.px(Style.font.body, Fonts.body)
     clip: true
     selectByMouse: true
 

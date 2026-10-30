@@ -29,7 +29,7 @@ Column {
     text: root.feedback
     color: Util.alpha(Commons.Color.popups.text, 0.65)
     font.family: Fonts.text
-    font.pixelSize: Style.font.body
+    font.pixelSize: Fonts.px(Style.font.body, Fonts.meta)
     horizontalAlignment: Text.AlignHCenter
     elide: Text.ElideRight
     textFormat: Text.PlainText
@@ -58,6 +58,7 @@ Column {
         background: Commons.Color.popups.background
         accent: Commons.Color.accent
         fontFamily: Fonts.text
+        fontSize: Fonts.px(Style.font.body, Fonts.meta)
       }
 
       Button {
@@ -67,6 +68,7 @@ Column {
         background: Commons.Color.popups.background
         accent: Commons.Color.accent
         fontFamily: Fonts.text
+        fontSize: Fonts.px(Style.font.body, Fonts.meta)
       }
 
       Button {
@@ -76,6 +78,7 @@ Column {
         background: Commons.Color.popups.background
         accent: Commons.Color.accent
         fontFamily: Fonts.text
+        fontSize: Fonts.px(Style.font.body, Fonts.meta)
       }
     }
 
@@ -88,6 +91,7 @@ Column {
       background: Commons.Color.popups.background
       accent: Commons.Color.accent
       fontFamily: Fonts.text
+      fontSize: Fonts.px(Style.font.body, Fonts.meta)
     }
   }
 }

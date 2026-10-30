@@ -12,7 +12,7 @@ Rectangle {
 
   signal clicked()
 
-  width: Style.space(26)
+  width: Style.space(28)
   height: width
   radius: width / 2
   color: hover.hovered

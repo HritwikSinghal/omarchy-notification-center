@@ -23,7 +23,7 @@ Item {
     text: root.tr.t("panel.title")
     color: Commons.Color.popups.text
     font.family: Fonts.text
-    font.pixelSize: Style.font.heading
+    font.pixelSize: Fonts.px(Style.font.body, Fonts.title)
     font.bold: true
     textFormat: Text.PlainText
   }
@@ -48,7 +48,7 @@ Item {
             : root.tr.t("panel.allRead").arg(Commons.I18n.formatNumber(root.total))
       color: root.unread > 0 ? Commons.Color.accent : Util.alpha(Commons.Color.popups.text, 0.7)
       font.family: Fonts.text
-      font.pixelSize: Style.font.bodySmall
+      font.pixelSize: Fonts.px(Style.font.body, Fonts.small)
       font.bold: root.unread > 0
       textFormat: Text.PlainText
     }
