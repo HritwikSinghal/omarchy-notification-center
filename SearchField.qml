@@ -7,14 +7,25 @@ import "Fonts.js" as Fonts
 // The search line: the panel filters rows by app, title and body as you type
 // (History.matchesQuery). A plain TextInput rather than the shell's
 // FilterInput, which is append-only because the menu owns the arrow keys; here
-// the query is ordinary editable text. Esc clears a query first, then closes.
+// the query is ordinary editable text. It also carries the list's keyboard
+// navigation (arrows, Enter, Delete); Esc steps back selection, query, panel.
 Rectangle {
   id: root
 
   required property var tr
   readonly property string text: input.text
+  // Whether the list has a keyboard selection. Enter and Delete act on it
+  // only then; with none they edit the query as usual.
+  property bool hasSelection: false
 
   signal dismissRequested()
+  // Keyboard navigation of the list, which never takes focus itself: the
+  // search line keeps it so typing always searches.
+  signal navigateRequested(int delta)
+  signal activateRequested()
+  signal deleteRequested(bool wholeGroup)
+  signal collapseRequested(bool collapse)
+  signal clearSelectionRequested()
 
   function focusInput() { input.forceActiveFocus() }
   function clear() { input.text = "" }
@@ -63,8 +74,54 @@ Rectangle {
     clip: true
     selectByMouse: true
 
+    Keys.onUpPressed: function(event) { root.navigateRequested(-1); event.accepted = true }
+    Keys.onDownPressed: function(event) { root.navigateRequested(1); event.accepted = true }
+    Keys.onTabPressed: function(event) { root.navigateRequested(1); event.accepted = true }
+    Keys.onBacktabPressed: function(event) { root.navigateRequested(-1); event.accepted = true }
+
+    Keys.onReturnPressed: function(event) {
+      if (root.hasSelection) root.activateRequested()
+      event.accepted = true
+    }
+    Keys.onEnterPressed: function(event) {
+      if (root.hasSelection) root.activateRequested()
+      event.accepted = true
+    }
+
+    // Delete dismisses the selected row, Shift+Delete its whole group. With
+    // no selection it is left to the input, which deletes forward.
+    Keys.onDeletePressed: function(event) {
+      if (!root.hasSelection) {
+        event.accepted = false
+        return
+      }
+      root.deleteRequested((event.modifiers & Qt.ShiftModifier) !== 0)
+      event.accepted = true
+    }
+
+    // Left/Right fold the selected row's group, but only with an empty query:
+    // with text they move the caret.
+    Keys.onLeftPressed: function(event) {
+      if (!root.hasSelection || input.text !== "") {
+        event.accepted = false
+        return
+      }
+      root.collapseRequested(true)
+      event.accepted = true
+    }
+    Keys.onRightPressed: function(event) {
+      if (!root.hasSelection || input.text !== "") {
+        event.accepted = false
+        return
+      }
+      root.collapseRequested(false)
+      event.accepted = true
+    }
+
+    // Esc steps back one level: selection, then query, then the panel.
     Keys.onEscapePressed: function(event) {
-      if (input.text !== "") input.text = ""
+      if (root.hasSelection) root.clearSelectionRequested()
+      else if (input.text !== "") input.text = ""
       else root.dismissRequested()
       event.accepted = true
     }

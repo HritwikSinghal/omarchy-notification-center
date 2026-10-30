@@ -128,6 +128,7 @@ Item {
     // Every open starts unfiltered, with the keyboard in the search line, so
     // typing searches at once and Esc still closes.
     searchField.clear();
+    historyList.clearSelection();
     Qt.callLater(function () {
       if (root.opened)
         searchField.focusInput();
@@ -160,6 +161,21 @@ Item {
       return;
     var at = Date.now() / 1000;
     root.mutateHistory(function(state) { return History.hide(state, k, at); });
+  }
+
+  // A whole group at once: one state change and one save, not one per row.
+  function hideEntries(keys) {
+    var list = (keys || []).map(function(key) { return String(key || ""); })
+                           .filter(function(key) { return key !== ""; });
+    if (list.length === 0)
+      return;
+    var at = Date.now() / 1000;
+    root.mutateHistory(function(state) {
+      var next = state;
+      for (var i = 0; i < list.length; i++)
+        next = History.hide(next, list[i], at);
+      return next;
+    });
   }
 
   function closeAll() {
@@ -308,10 +324,22 @@ Item {
         SearchField {
           id: searchField
           tr: strings
-          onTextChanged: root.query = text
+          hasSelection: historyList.hasSelection
+          // A new query reshuffles the rows, so a selection would land on an
+          // unrelated one; start over instead.
+          onTextChanged: {
+            root.query = text
+            historyList.clearSelection()
+          }
           onDismissRequested: root.dismiss()
+          onNavigateRequested: historyList.moveSelection(delta)
+          onActivateRequested: historyList.activateSelected()
+          onDeleteRequested: wholeGroup ? historyList.dismissSelectedGroup() : historyList.dismissSelected()
+          onCollapseRequested: historyList.setSelectedGroupCollapsed(collapse)
+          onClearSelectionRequested: historyList.clearSelection()
         },
         HistoryList {
+          id: historyList
           tr: strings
           rows: root.shownEntries
           emptyText: root.query !== "" ? strings.t("panel.noMatches") : strings.t("panel.empty")
@@ -321,6 +349,7 @@ Item {
           maxHeight: surface.height * 0.65
           onActivated: root.activateEntry(entry)
           onRemoveRequested: root.hideEntry(key)
+          onRemoveGroupRequested: root.hideEntries(keys)
         },
         PanelFooter {
           tr: strings

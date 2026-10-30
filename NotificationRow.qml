@@ -51,12 +51,19 @@ Rectangle {
     return root.tr.t("time.days").arg(Math.trunc(d / 86400));
   }
 
+  // The keyboard selection: an accent fill and outline, stronger than hover.
+  property bool selected: false
+
   width: parent ? parent.width : 0
   height: rowHeight
   radius: Style.space(3)
-  color: rowHover.hovered
-         ? Util.alpha(Commons.Color.popups.text, 0.06)
-         : (rowItem.isUnread ? Util.alpha(Commons.Color.accent, 0.07) : "transparent")
+  color: rowItem.selected
+         ? Util.alpha(Commons.Color.accent, 0.16)
+         : rowHover.hovered
+           ? Util.alpha(Commons.Color.popups.text, 0.06)
+           : (rowItem.isUnread ? Util.alpha(Commons.Color.accent, 0.07) : "transparent")
+  border.width: rowItem.selected ? 1 : 0
+  border.color: Util.alpha(Commons.Color.accent, 0.6)
 
   Behavior on color {
     ColorAnimation {
@@ -127,7 +134,7 @@ Rectangle {
     anchors.left: thumb.right
     anchors.leftMargin: Style.space(12)
     anchors.right: parent.right
-    anchors.rightMargin: Style.space(28)
+    anchors.rightMargin: Style.space(40)
     anchors.verticalCenter: parent.verticalCenter
     spacing: Style.space(2)
 
@@ -187,27 +194,12 @@ Rectangle {
   }
 
   // Per-row close
-  Text {
+  DismissButton {
     anchors.right: parent.right
-    anchors.rightMargin: Style.space(9)
+    anchors.rightMargin: Style.space(6)
     anchors.top: parent.top
-    anchors.topMargin: Style.space(7)
-    text: "×"
-    color: rowCloseHover.hovered
-           ? Commons.Color.popups.text
-           : Util.alpha(Commons.Color.popups.text, 0.3)
-    font.family: Style.font.family
-    font.pixelSize: Style.font.title
-    textFormat: Text.PlainText
-
-    HoverHandler {
-      id: rowCloseHover
-    }
-
-    MouseArea {
-      anchors.fill: parent
-      anchors.margins: -Style.space(7)
-      onClicked: rowItem.removeRequested()
-    }
+    anchors.topMargin: Style.space(6)
+    emphasised: rowItem.selected
+    onClicked: rowItem.removeRequested()
   }
 }
