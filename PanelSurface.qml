@@ -3,9 +3,15 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 
-// Card chrome for the notification panel: placement under the bar, the border,
-// the unread hairline, and the two ways out of it. The panel hands its parts in
-// through `content`, in the order they stack; this file holds no data and no state.
+// Card chrome for the notification panel: the border, the unread hairline, the
+// drop-down motion and Esc. The panel hands its parts in through `content`, in
+// the order they stack; this file holds no data and no state.
+//
+// It fills a window only as large as the card (Panel.qml cardWin), not the
+// whole screen: on a 4K output a full-screen surface repainted every animated
+// frame held the panel to 120fps or less on a 240Hz screen, while a card-sized
+// one keeps up. Where that window sits on screen is worked out here
+// (cardScreenX, cardScreenTop) from the screen it opens on.
 Item {
   id: root
 
@@ -18,12 +24,28 @@ Item {
   readonly property real cardWidth: Style.space(660)
   readonly property real edgeMargin: Style.space(12)
 
+  // The screen the panel opens on, in its own logical pixels.
+  property real screenWidth: 0
+  property real screenHeight: 0
+  // Where the card's window goes on that screen, hung under the bar. The
+  // window starts dropDistance above the card so the drop-in is not clipped.
+  readonly property real cardScreenX: root.cardX(root.screenWidth)
+  readonly property real cardScreenTop: Style.bar.sizeHorizontal + Style.space(8)
+  readonly property real maxCardHeight: Math.max(0, root.screenHeight - Style.space(96))
+  // Fixed while open: resizing a layer surface every animated frame would
+  // cost more than it saves.
+  readonly property real windowHeight: root.maxCardHeight + root.dropDistance
+  // The card itself, for the window's input mask.
+  readonly property Item cardItem: card
+
   // Open drops the card down from above while it fades in; close lifts it
   // back. The panel keeps the window mapped for `motionDuration` after close
   // so the lift is seen (Panel.qml closeHold).
   readonly property int motionDuration: 220
   readonly property real dropDistance: Style.space(40)
 
+  // Hung from the bell: its centre is the card's centre, pulled in only when
+  // that would push the card past a screen edge. Centred with no anchor.
   function cardX(available) {
     var centred = (available - cardWidth) / 2
     if (!(root.anchorX > 0))
@@ -51,23 +73,14 @@ Item {
   onContentChanged: root.placeContent()
   Component.onCompleted: root.placeContent()
 
-  // Click outside the card.
-  MouseArea {
-    anchors.fill: parent
-    onClicked: root.dismissed()
-  }
-
   BorderSurface {
     id: card
-    // Hangs from the bar, centred on the screen, so it never covers the
-    // middle of what you were reading.
-    anchors.top: parent.top
-    anchors.topMargin: Style.bar.sizeHorizontal + Style.space(8)
-    // Hung from the bell: its centre is the card's centre, pulled in only when
-    // that would push the card past a screen edge.
-    x: root.cardX(parent.width)
+    // The window is placed on screen (cardScreenX/Top); in it the card sits
+    // at the left, dropDistance down.
+    x: 0
+    y: root.dropDistance
     width: root.cardWidth
-    height: Math.min(parent.height - Style.space(96),
+    height: Math.min(root.maxCardHeight,
                      card.borderTop + Style.spacing.panelPadding + col.implicitHeight + Style.spacing.panelPadding + card.borderBottom)
     color: Commons.Color.popups.background
     radius: Style.cornerRadius

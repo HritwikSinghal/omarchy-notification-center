@@ -308,14 +308,55 @@ Item {
   }
   onOpenedChanged: if (!root.opened) closeHold.restart(); else closeHold.stop()
 
+  // Two surfaces: a static, transparent full-screen catcher that only closes
+  // the panel on a click outside the card, and the card in a window of its
+  // own size (PanelSurface explains why). The catcher sits on the Top layer
+  // and the card on Overlay, so the card is above it whichever maps first.
+  // The catcher picks the screen and the card follows it there.
   OverlayWindow {
     id: win
     shown: root.opened || closeHold.running
+    shownLayer: WlrLayer.Top
+    shownKeyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.namespace: "gabodev-notification-center-catcher"
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: root.dismiss()
+    }
+  }
+
+  PanelWindow {
+    id: cardWin
+    visible: win.visible
+    screen: win.targetScreen
+    anchors {
+      top: true
+      left: true
+    }
+    margins {
+      left: surface.cardScreenX
+      top: surface.cardScreenTop - surface.dropDistance
+    }
+    implicitWidth: surface.cardWidth
+    implicitHeight: surface.windowHeight
+    color: "transparent"
+    exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+    // Blur, dim and no_anim rules match this name (hypr/looknfeel.lua).
     WlrLayershell.namespace: "gabodev-notification-center"
+    // Only the card takes input; the rest of the window passes clicks through
+    // to the catcher underneath.
+    mask: Region {
+      item: surface.cardItem
+    }
 
     PanelSurface {
       id: surface
       anchors.fill: parent
+      screenWidth: win.targetScreen ? win.targetScreen.width : 0
+      screenHeight: win.targetScreen ? win.targetScreen.height : 0
       opened: root.opened
       unread: root.unread
       anchorX: root.anchorX
@@ -352,7 +393,7 @@ Item {
           lastSeen: root.lastSeen
           // Two thirds of the screen: tall enough to scan a day's history,
           // short enough that the header and footer stay on screen.
-          maxHeight: surface.height * 0.65
+          maxHeight: surface.screenHeight * 0.65
           onActivated: function(entry) { root.activateEntry(entry) }
           onRemoveRequested: function(key) { root.hideEntry(key) }
           onRemoveGroupRequested: function(keys) { root.hideEntries(keys) }
