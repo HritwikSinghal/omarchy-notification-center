@@ -18,6 +18,12 @@ Item {
   readonly property real cardWidth: Style.space(600)
   readonly property real edgeMargin: Style.space(12)
 
+  // Open drops the card down from above while it fades in; close lifts it
+  // back. The panel keeps the window mapped for `motionDuration` after close
+  // so the lift is seen (Panel.qml closeHold).
+  readonly property int motionDuration: 220
+  readonly property real dropDistance: Style.space(40)
+
   function cardX(available) {
     var centred = (available - cardWidth) / 2
     if (!(root.anchorX > 0))
@@ -70,8 +76,18 @@ Item {
     opacity: root.opened ? 1 : 0
     Behavior on opacity {
       NumberAnimation {
-        duration: 140
+        duration: root.motionDuration
         easing.type: Easing.OutCubic
+      }
+    }
+
+    transform: Translate {
+      y: root.opened ? 0 : -root.dropDistance
+      Behavior on y {
+        NumberAnimation {
+          duration: root.motionDuration
+          easing.type: Easing.OutCubic
+        }
       }
     }
 

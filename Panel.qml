@@ -271,9 +271,17 @@ Item {
     }
   }
 
+  // Holds the window mapped while the card lifts away on close; without it the
+  // surface vanishes the frame `opened` goes false.
+  Timer {
+    id: closeHold
+    interval: surface.motionDuration
+  }
+  onOpenedChanged: if (!root.opened) closeHold.restart(); else closeHold.stop()
+
   OverlayWindow {
     id: win
-    shown: root.opened
+    shown: root.opened || closeHold.running
     WlrLayershell.namespace: "gabodev-notification-center"
 
     PanelSurface {
