@@ -228,53 +228,12 @@ Column {
     spacing: Style.space(2)
     boundsBehavior: Flickable.StopAtBounds
 
-    add: Transition {
-      NumberAnimation {
-        property: "opacity"
-        from: 0
-        to: 1
-        duration: root.motionDuration
-        easing.type: Easing.OutCubic
-      }
-    }
-    remove: Transition {
-      ParallelAnimation {
-        NumberAnimation {
-          property: "opacity"
-          to: 0
-          duration: root.motionDuration
-          easing.type: Easing.OutCubic
-        }
-        NumberAnimation {
-          property: "x"
-          to: Style.space(24)
-          duration: root.motionDuration
-          easing.type: Easing.OutCubic
-        }
-      }
-    }
-    displaced: Transition {
-      NumberAnimation {
-        properties: "x,y"
-        duration: root.motionDuration
-        easing.type: Easing.OutCubic
-      }
-      // A row displaced mid-arrival must still end fully shown.
-      NumberAnimation {
-        property: "opacity"
-        to: 1
-        duration: root.motionDuration
-      }
-    }
-    move: Transition {
-      NumberAnimation {
-        properties: "x,y"
-        duration: root.motionDuration
-        easing.type: Easing.OutCubic
-      }
-    }
-
-    delegate: Column {
+    // Rows arrive and leave by animating their own height (`reveal`), not by
+    // ListView's add/remove/displaced transitions: the view re-lays itself
+    // out every frame as heights change, so no row can be left stranded
+    // mid-move. Those transitions did exactly that when interrupted or when a
+    // group header appeared mid-animation, stacking rows on top of each other.
+    delegate: Item {
       id: entry
       required property int index
       required property string key
@@ -288,81 +247,119 @@ Column {
       readonly property string groupKey: History.appKey(entry.row)
       readonly property bool groupCollapsed: root.collapsed.indexOf(entry.groupKey) >= 0
 
+      // 0 = collapsed out of the list, 1 = fully shown.
+      property real reveal: 1
+
       width: list.width
+      height: content.implicitHeight * entry.reveal
+      opacity: entry.reveal
+      clip: entry.reveal < 1
 
-      // Group header: chevron, app, count, and a close for the whole group.
-      // Clicking anywhere else on it collapses the group.
-      Item {
-        width: parent.width
-        height: root.headerHeight
-        visible: entry.item.groupStart === true
+      ListView.onAdd: arrive.start()
+      ListView.onRemove: leave.start()
 
-        // First, so the close button declared after it sits on top.
-        MouseArea {
-          anchors.fill: parent
-          cursorShape: Qt.PointingHandCursor
-          onClicked: root.toggleGroup(entry.groupKey)
-        }
-
-        Row {
-          anchors.left: parent.left
-          anchors.leftMargin: Style.space(10)
-          anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(8)
-
-          Text {
-            // nf-fa chevron_down, turned to point right while collapsed.
-            text: "\uf078"
-            rotation: entry.groupCollapsed ? -90 : 0
-            Behavior on rotation {
-              NumberAnimation {
-                duration: root.motionDuration
-                easing.type: Easing.OutCubic
-              }
-            }
-            color: Util.alpha(Commons.Color.popups.text, 0.45)
-            font.family: Style.font.family
-            font.pixelSize: Fonts.px(Style.font.body, Fonts.meta)
-            textFormat: Text.PlainText
-            anchors.verticalCenter: parent.verticalCenter
-          }
-          Text {
-            text: String(entry.row.app || entry.row.source || root.tr.t("panel.otherApp"))
-            color: Util.alpha(Commons.Color.popups.text, 0.8)
-            font.family: Fonts.text
-            font.pixelSize: Fonts.px(Style.font.body, Fonts.meta)
-            font.bold: true
-            textFormat: Text.PlainText
-            anchors.verticalCenter: parent.verticalCenter
-          }
-          Text {
-            text: String(entry.item.groupSize || 0)
-            color: Util.alpha(Commons.Color.popups.text, 0.45)
-            font.family: Fonts.text
-            font.pixelSize: Fonts.px(Style.font.body, Fonts.small)
-            textFormat: Text.PlainText
-            anchors.verticalCenter: parent.verticalCenter
-          }
-        }
-
-        DismissButton {
-          anchors.right: parent.right
-          anchors.rightMargin: Style.space(6)
-          anchors.verticalCenter: parent.verticalCenter
-          onClicked: root.dismissGroup(entry.groupKey)
-        }
+      NumberAnimation {
+        id: arrive
+        target: entry
+        property: "reveal"
+        from: 0
+        to: 1
+        duration: root.motionDuration
+        easing.type: Easing.OutCubic
       }
 
-      NotificationRow {
-        width: parent.width
-        rowHeight: root.rowHeight
-        tr: root.tr
-        row: entry.row
-        isUnread: Number(entry.row.ts || 0) > root.lastSeen
-        selected: entry.index === root.currentIndex
+      // delayRemove keeps the delegate alive until it has folded away.
+      SequentialAnimation {
+        id: leave
+        PropertyAction { target: entry; property: "ListView.delayRemove"; value: true }
+        NumberAnimation {
+          target: entry
+          property: "reveal"
+          to: 0
+          duration: root.motionDuration
+          easing.type: Easing.OutCubic
+        }
+        PropertyAction { target: entry; property: "ListView.delayRemove"; value: false }
+      }
 
-        onActivated: root.activated(entry.row)
-        onRemoveRequested: root.removeRequested(String(entry.row.key || ""))
+      Column {
+        id: content
+        width: parent.width
+
+        // Group header: chevron, app, count, and a close for the whole group.
+        // Clicking anywhere else on it collapses the group.
+        Item {
+          width: parent.width
+          height: root.headerHeight
+          visible: entry.item.groupStart === true
+
+          // First, so the close button declared after it sits on top.
+          MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.toggleGroup(entry.groupKey)
+          }
+
+          Row {
+            anchors.left: parent.left
+            anchors.leftMargin: Style.space(10)
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.space(8)
+
+            Text {
+              // nf-fa chevron_down, turned to point right while collapsed.
+              text: "\uf078"
+              rotation: entry.groupCollapsed ? -90 : 0
+              Behavior on rotation {
+                NumberAnimation {
+                  duration: root.motionDuration
+                  easing.type: Easing.OutCubic
+                }
+              }
+              color: Util.alpha(Commons.Color.popups.text, 0.45)
+              font.family: Style.font.family
+              font.pixelSize: Fonts.px(Style.font.body, Fonts.meta)
+              textFormat: Text.PlainText
+              anchors.verticalCenter: parent.verticalCenter
+            }
+            Text {
+              text: String(entry.row.app || entry.row.source || root.tr.t("panel.otherApp"))
+              color: Util.alpha(Commons.Color.popups.text, 0.8)
+              font.family: Fonts.text
+              font.pixelSize: Fonts.px(Style.font.body, Fonts.meta)
+              font.bold: true
+              textFormat: Text.PlainText
+              anchors.verticalCenter: parent.verticalCenter
+            }
+            Text {
+              text: String(entry.item.groupSize || 0)
+              color: Util.alpha(Commons.Color.popups.text, 0.45)
+              font.family: Fonts.text
+              font.pixelSize: Fonts.px(Style.font.body, Fonts.small)
+              textFormat: Text.PlainText
+              anchors.verticalCenter: parent.verticalCenter
+            }
+          }
+
+          DismissButton {
+            anchors.right: parent.right
+            anchors.rightMargin: Style.space(6)
+            anchors.verticalCenter: parent.verticalCenter
+            onClicked: root.dismissGroup(entry.groupKey)
+          }
+        }
+
+        NotificationRow {
+          width: parent.width
+          rowHeight: root.rowHeight
+          tr: root.tr
+          row: entry.row
+          isUnread: Number(entry.row.ts || 0) > root.lastSeen
+          selected: entry.index === root.currentIndex
+
+          onActivated: root.activated(entry.row)
+          onRemoveRequested: root.removeRequested(String(entry.row.key || ""))
+        }
       }
     }
 
