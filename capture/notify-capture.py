@@ -133,6 +133,10 @@ def png_from_pixels(value):
         return b""
     if width * height > MAX_PIXELS or stride < width * channels:
         return b""
+    # bytes(5) would be five zero bytes, not an error: only a byte string or a
+    # list of byte values is pixel data.
+    if not isinstance(pixels, (bytes, bytearray, list, tuple)):
+        return b""
     try:
         raw = bytes(pixels)
     except (TypeError, ValueError):
@@ -304,6 +308,13 @@ def handle(message, pending, entries):
     return entries
 
 
+def expire(pending, now):
+    """Forget Notify calls whose reply never came (an error, a dropped
+    message) within PENDING_TTL seconds of the call."""
+    for key in [k for k, v in pending.items() if now - v[3] > PENDING_TTL]:
+        del pending[key]
+
+
 def main():
     entries = prune(load_index(), time.time())
     save_index(entries)
@@ -325,11 +336,7 @@ def main():
             entries = handle(message, pending, entries)
         except Exception as error:  # noqa: BLE001 -- see above
             say("warn", f"skipped a bus message: {error!r}")
-
-        # Calls whose reply never came (an error, a dropped message) expire.
-        now = time.time()
-        for key in [k for k, v in pending.items() if now - v[3] > PENDING_TTL]:
-            del pending[key]
+        expire(pending, time.time())
 
     error = monitor.stderr.read().strip()
     say("error", f"busctl monitor exited ({monitor.wait()}): {error[:300]}")

@@ -14,10 +14,12 @@ function appKey(value) {
   return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "")
 }
 
-// Only files in the helper's own cache directory are loaded.
+// Only files in the helper's own cache directory are loaded: an absolute path
+// of plain segments (no "." or "..", which could step out of it) ending in
+// gabodev.notification-center/images/<sha1>.<image type>.
 function safeImage(value) {
   var url = String(value || "")
-  return /^file:\/\/\/[^\s]*\/gabodev\.notification-center\/images\/[0-9a-f]{40}\.(png|jpg|gif|bmp|webp)$/.test(url) ? url : ""
+  return /^file:\/\/(?:\/(?!\.\.?(?:\/|$))[^\s\/]+)*\/gabodev\.notification-center\/images\/[0-9a-f]{40}\.(png|jpg|gif|bmp|webp)$/.test(url) ? url : ""
 }
 
 function valid(entry) {
