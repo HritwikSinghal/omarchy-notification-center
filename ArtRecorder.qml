@@ -26,6 +26,9 @@ Item {
   function note(player) {
     if (!player) return
     var next = Art.record(root.entries, {
+      // The desktop entry ("tidal-hifi") is what notifications name the app;
+      // the identity ("Tidal Hi-Fi") when a player sets none.
+      app: player.desktopEntry || player.identity,
       title: player.trackTitle,
       artist: player.trackArtist,
       art: player.trackArtUrl
@@ -58,7 +61,7 @@ Item {
     }
   }
 
-  // Tracks heard before the file loads are kept, newest first, ahead of it.
+  // Tracks heard before the file loads are merged with it (Art.merge).
   FileView {
     id: cacheFile
     path: root.cachePath
@@ -71,15 +74,12 @@ Item {
 
   function finishLoad(text) {
     if (root.loaded) return
-    var stored = Art.parse(text)
-    var merged = root.entries
-    for (var i = stored.length - 1; i >= 0; i--)
-      merged = Art.record(merged, stored[i], stored[i].ts)
-    // record() puts each one first; restore newest-first order by time.
-    merged = merged.slice().sort(function(a, b) { return b.ts - a.ts })
-    root.entries = merged
+    // One entry per track, the later time winning, so a track heard before
+    // the load is neither evicted by a full cache nor rolled back to the
+    // stored, older time.
+    root.entries = Art.merge([root.entries, Art.parse(text)], Date.now() / 1000)
     root.loaded = true
-    if (merged.length > 0) saveTimer.restart()
+    if (root.entries.length > 0) saveTimer.restart()
   }
 
   Timer {

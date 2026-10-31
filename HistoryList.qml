@@ -83,25 +83,47 @@ Column {
     while (rowModel.count > target.length) rowModel.remove(rowModel.count - 1)
   }
 
-  onItemKeysChanged: root.syncModel()
+  onItemKeysChanged: {
+    root.syncModel()
+    root.followSelection()
+  }
   Component.onCompleted: root.syncModel()
 
   // Row motion: arrivals fade in, departures fade out, the rest slide.
   readonly property int motionDuration: 180
 
-  // The keyboard selection, an index into `items`; -1 when nothing is
-  // selected. The panel drives it from the search line's keys. When rows go
-  // away it stays on the same slot, which now holds the next row.
+  // The keyboard selection: the selected notification's key, and its index in
+  // `items` (-1 when nothing is selected). The panel drives it from the search
+  // line's keys. It follows the notification, not the slot: a new notification
+  // that moves its group to the top must not leave Enter or Delete aimed at
+  // whatever row slid into the old position. Only when the selected row itself
+  // goes away (dismissed, collapsed) does it fall back to the same slot, which
+  // now holds the next row.
+  property string selectedKey: ""
   property int currentIndex: -1
   readonly property bool hasSelection: root.currentIndex >= 0 && root.currentIndex < root.shownCount
-  onShownCountChanged: if (root.currentIndex >= root.shownCount) root.select(root.shownCount - 1)
 
   function select(index) {
+    if (index < 0 || index >= root.shownCount) {
+      root.clearSelection()
+      return
+    }
     root.currentIndex = index
-    if (index >= 0) list.positionViewAtIndex(index, ListView.Contain)
+    root.selectedKey = root.itemKeys[index]
+    list.positionViewAtIndex(index, ListView.Contain)
   }
 
-  function clearSelection() { root.currentIndex = -1 }
+  function clearSelection() {
+    root.selectedKey = ""
+    root.currentIndex = -1
+  }
+
+  function followSelection() {
+    if (root.selectedKey === "") return
+    var at = root.itemKeys.indexOf(root.selectedKey)
+    if (at >= 0) root.select(at)
+    else root.select(Math.min(root.currentIndex, root.shownCount - 1))
+  }
 
   // Down from nothing selects the first row, Up from nothing the last.
   function moveSelection(delta) {
@@ -377,7 +399,8 @@ Column {
           row: entry.row
           isUnread: Number(entry.row.ts || 0) > root.lastSeen
           artUrl: Art.lookup(root.artEntries, entry.row)
-          selected: entry.index === root.currentIndex
+          // A row folding away is never the selection, whatever index Qt gives it.
+          selected: entry.lookup !== undefined && entry.index === root.currentIndex
 
           onActivated: root.activated(entry.row)
           onRemoveRequested: root.removeRequested(String(entry.row.key || ""))
