@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "gabodev.notification-center",
   "name": "Notification History",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "author": "gabodev",
   "description": "A bell and a history panel for Omarchy's notification service: what arrived while you were away.",
   "kinds": [
