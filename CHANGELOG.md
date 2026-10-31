@@ -17,8 +17,9 @@ MIT notice is kept in `LICENSE.MIT`.
 - Keyboard control: arrows by row, Tab by group, Enter, Delete / Shift+Delete,
   Left / Right to fold, Esc steps back through selection, search and panel.
 - Footer shortcuts written under each button: Ctrl+M mark all read, Ctrl+D close
-  all, Ctrl+L clear history, Ctrl+E expand all (newest 5 rows per group, or all its
-  unread), Ctrl+Shift+E collapse all, Esc close.
+  all, Ctrl+L clear history, Ctrl+E expand all (first press: newest 5 rows per group,
+  or all its unread; second: every row; then it switches between the two),
+  Ctrl+Shift+E collapse all, Esc close.
 - Undo for every removal (row, group, Clear history, Close all) with Ctrl+Z for
   10 seconds; the footer says what was removed.
 - A "new" tier: rows that reached the history since the panel last closed get an
@@ -39,7 +40,10 @@ MIT notice is kept in `LICENSE.MIT`.
 ### Fixed
 
 - The keyboard selection follows its notification instead of its slot, so Enter
-  and Delete never act on a row that slid into its place.
+  and Delete never act on a row that slid into its place; after a removal it
+  stays in the same app group, even when the removal reorders the groups.
+- On a first run the bell ignored every read, close and clear until the shell
+  restarted: its settings file did not exist yet, so nothing watched it.
 
 ## [1.0.0] - 2026-10-27
 

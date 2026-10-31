@@ -5,6 +5,7 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 
+import "Debug.js" as Debug
 import "History.js" as History
 
 // Bar bell: count of notifications new since the panel last closed, from the
@@ -94,6 +95,7 @@ WidgetButton {
     root.lastOpened = state.lastOpened
     root.clearedAt = state.clearedAt
     root.hidden = state.hidden
+    Debug.log("bell", "config", { lastSeen: state.lastSeen, lastOpened: state.lastOpened })
   }
 
   // An atomic rewrite can land unreadable for a moment; keep the last good
@@ -233,7 +235,24 @@ WidgetButton {
     watchChanges: true
     printErrors: false
     onFileChanged: reload()
-    onLoaded: root.applyConfig(configFile.text())
-    onLoadFailed: root.applyConfig("")
+    onLoaded: {
+      configRetry.stop()
+      root.applyConfig(configFile.text())
+    }
+    onLoadFailed: {
+      root.applyConfig("")
+      configRetry.start()
+    }
+  }
+
+  // On a first run config.json does not exist yet: the load fails and nothing
+  // watches for the file to appear, so the badge would ignore every read,
+  // close and clear until the shell restarts. Retry until the panel's first
+  // save creates it; once loaded, the watch above takes over.
+  Timer {
+    id: configRetry
+    interval: 2000
+    repeat: true
+    onTriggered: configFile.reload()
   }
 }

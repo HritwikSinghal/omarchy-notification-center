@@ -58,12 +58,14 @@ than sleeping. It stops the session when done. Its log is
 | File | Must show |
 |---|---|
 | `01-open-all-new.png` | Panel top-right under the bar; three groups; every row with the accent bar, stronger fill and bold title; "N new" on group headers and the header pill; tidal-hifi rows with their coloured covers and a small app badge; the bell in the bar with a count |
-| `02-one-new-row.png` | Only the "One more thing" Chat row has the bar and bold title; the other rows have only the unread dot; pill reads "1 new . 12 unread" |
+| `02-one-new-row.png` | Only the "One more thing" Chat row has the bar and bold title; the other rows have only the unread dot; pill reads "1 new . 12 unread"; the bell in the bar reads 1 (the session starts without a config file, so this also checks the bell's first-run reload) |
 | `03-removed-undo-line.png` | One row fewer; footer line "Removed 1 notification. Ctrl+Z to undo" |
 | `04-cleared-undo-line.png` | Empty list text; panel still open; "Cleared 12 notifications. Ctrl+Z to undo" |
 | `05-search.png` | Only "Invoice due" under Mail; "invoice" in the search field |
 | `06-expand-all.png` | tidal-hifi shows 5 of its 7 rows; "Expand all" button lit |
 | `07-collapse-all.png` | Each group shows its header and newest row only |
+| `08-expand-full.png` | Second Ctrl+E: every row of every group, tidal-hifi all 7; "Expand all" still lit |
+| `06`, `07`, `08` | The bell in the bar has no count (everything was read at Ctrl+M) |
 | every shot | Footer fits on one line with each shortcut under its button; nothing clipped |
 
 ## Driving it by hand

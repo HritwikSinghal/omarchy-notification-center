@@ -280,3 +280,16 @@ function shownItems(grouped, collapsed, expandAll, full, unreadByApp, preview, l
   }
   return out
 }
+
+// Where the selection goes when the item at `index` is removed: the next item
+// of the same app group, else the previous one; -1 when it was the group's
+// only shown item. Removing a row can reorder the groups (each sorts by its
+// newest row), so the plain next slot may belong to another app.
+function neighbourInGroup(items, index) {
+  var source = Array.isArray(items) ? items : []
+  if (index < 0 || index >= source.length) return -1
+  var key = appKey(source[index].row)
+  if (index + 1 < source.length && appKey(source[index + 1].row) === key) return index + 1
+  if (index > 0 && appKey(source[index - 1].row) === key) return index - 1
+  return -1
+}

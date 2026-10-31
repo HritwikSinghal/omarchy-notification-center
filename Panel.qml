@@ -84,7 +84,7 @@ Item {
       keyFocus: searchField.inputFocused,
       undo: { steps: root.undoStack.length, footer: root.undoText },
       list: { items: historyList.shownCount, selectedKey: historyList.selectedKey,
-              expandAll: historyList.expandAll,
+              expandAll: historyList.expandAll, expandFull: historyList.expandFull,
               currentIndex: historyList.currentIndex, collapsed: historyList.collapsed },
       capture: { running: imageCapture.running, images: imageCapture.entries.length,
                  restarts: imageCapture.restarts, lastError: imageCapture.lastError,

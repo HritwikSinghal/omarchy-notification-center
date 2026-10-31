@@ -38,6 +38,12 @@ code through 7ec034b. Built on top of upstream 7ec034b:
   cache (now 200 MB); ImageCapture ignoring XDG_CACHE_HOME. Under Expand all, unfolding
   a group by hand (header or Right) shows all its rows.
 
+- Found by the new tests (2026-10-31): the bell never reloaded on a first run (config.json
+  missing at start; FileView does not watch a missing file -> retry timer until it exists,
+  verified in nce); a removal could move the selection into another group when it
+  reordered the groups (History.neighbourInGroup); `png_from_pixels` turned an int into
+  zero bytes. Ctrl+E now cycles preview -> every row -> preview (`expandFull`).
+
 Next:
 1. Visual check of the loaded build: NEW highlight, expand/collapse incl. unfolding one
    group fully, undo line, Spanish footer fit.

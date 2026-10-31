@@ -80,7 +80,7 @@ Each button's shortcut is written under it.
 | **Mark all read** | Ctrl+M | Nothing counts as new or unread any more; closes the panel |
 | **Close all** | Ctrl+D | Removes every row and dismisses any notification still on screen |
 | **Clear history** | Ctrl+L | Removes every row from the panel |
-| **Expand all** | Ctrl+E | Opens every group, showing its newest 5 rows (or all its unread ones, if more); press again to restore |
+| **Expand all** | Ctrl+E | Opens every group, showing its newest 5 rows (or all its unread ones, if more); press again to show every row, and again to switch back |
 | **Collapse all** | Ctrl+Shift+E | Folds every group to its newest row |
 | **Close** | Esc | Closes the panel without changing anything |
 

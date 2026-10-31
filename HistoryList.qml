@@ -33,18 +33,20 @@ Column {
   // Rows grouped by app (History.groupByApp). A collapsed group keeps its
   // header and newest row. Collapse state lives only as long as the panel.
   property var collapsed: []
-  // Expand all (Ctrl+E): every group open, but showing only its newest
-  // previewRows rows, or all its unread ones when there are more. Toggling it
-  // off restores the collapse state it replaced.
+  // Expand all (Ctrl+E): every group open. The first press shows a preview,
+  // each group's newest previewRows rows or all its unread ones when there are
+  // more; the second shows every row (expandFull); further presses toggle
+  // between the two. Collapse all (Ctrl+Shift+E) is the way back.
   property bool expandAll: false
-  property var collapsedBeforeExpand: []
+  property bool expandFull: false
   // Groups unfolded by hand (header or Right) while Expand all is on: these
   // show every row instead of the preview. Reset whenever Expand all is
   // toggled or everything is collapsed.
   property var fullGroups: []
   readonly property int previewRows: 5
   readonly property var grouped: History.groupByApp(root.rows)
-  readonly property var items: History.shownItems(root.grouped, root.collapsed, root.expandAll,
+  readonly property var items: History.shownItems(root.grouped, root.collapsed,
+                                                  root.expandAll && !root.expandFull,
                                                   root.fullGroups, root.unreadByApp,
                                                   root.previewRows, 100)
   readonly property int shownCount: root.items.length
@@ -182,9 +184,15 @@ Column {
     if (row) root.activated(row)
   }
 
+  // The selection moves to a neighbour in the same group before the row goes:
+  // the removal can reorder the groups, and falling back to the same slot
+  // would land in another app, where a following Shift+Delete would hit it.
   function dismissSelected() {
     var row = root.selectedRow()
-    if (row) root.removeRequested(String(row.key || ""))
+    if (!row) return
+    var next = History.neighbourInGroup(root.items, root.currentIndex)
+    if (next >= 0) root.selectedKey = root.itemKeys[next]
+    root.removeRequested(String(row.key || ""))
   }
 
   function dismissSelectedGroup() {
@@ -228,14 +236,10 @@ Column {
 
   function toggleExpandAll() {
     root.keepSelectionInGroup(function() {
+      // Each press opens every group again, whatever was folded by hand.
       root.fullGroups = []
-      if (root.expandAll) {
-        root.expandAll = false
-        root.collapsed = root.collapsedBeforeExpand
-        return
-      }
-      root.collapsedBeforeExpand = root.collapsed
       root.collapsed = []
+      root.expandFull = root.expandAll && !root.expandFull
       root.expandAll = true
     })
   }
@@ -248,6 +252,7 @@ Column {
         if (root.grouped[i].groupStart) keys.push(History.appKey(root.grouped[i].row))
       root.fullGroups = []
       root.expandAll = false
+      root.expandFull = false
       root.collapsed = keys
     })
   }
@@ -279,7 +284,7 @@ Column {
     if (!row) return
     var key = History.appKey(row)
     var isCollapsed = root.collapsed.indexOf(key) >= 0
-    if (!collapse && !isCollapsed && root.expandAll && root.fullGroups.indexOf(key) < 0) {
+    if (!collapse && !isCollapsed && root.expandAll && !root.expandFull && root.fullGroups.indexOf(key) < 0) {
       root.keepSelectionInGroup(function() { root.fullGroups = root.fullGroups.concat([key]) })
       return
     }

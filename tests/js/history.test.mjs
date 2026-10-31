@@ -251,3 +251,20 @@ test("search matches every word across app, source, title and body", () => {
   assert.equal(H.filterRows(rows, "nothing").length, 0)
   assert.equal(H.filterRows([{ source: "Firefox", summary: "Download done" }], "firefox done").length, 1)
 })
+
+test("removing a selected row keeps the selection in its group", () => {
+  // Chat sorts first only because of its newest row; removing that row moves
+  // Chat below tidal-hifi, so the next slot would be another app's row.
+  const rows = [
+    { key: "c2", app: "Chat" }, { key: "c1", app: "Chat" },
+    { key: "t1", app: "tidal-hifi" }, { key: "m1", app: "Mail" },
+  ]
+  const items = H.groupByApp(rows)
+  const at = (index) => (index < 0 ? null : items[index].row.key)
+  assert.equal(at(H.neighbourInGroup(items, 0)), "c1", "next row of the group")
+  assert.equal(at(H.neighbourInGroup(items, 1)), "c2", "last row of a group: the previous one")
+  assert.equal(H.neighbourInGroup(items, 2), -1, "a group's only row: no neighbour")
+  assert.equal(H.neighbourInGroup(items, 3), -1, "the last item, alone in its group")
+  assert.equal(H.neighbourInGroup(items, 9), -1)
+  assert.equal(H.neighbourInGroup(items, -1), -1)
+})

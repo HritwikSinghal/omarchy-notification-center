@@ -212,7 +212,11 @@ def run_scenario():
     ctrl("e")
     until("Ctrl+E from collapsed shows the previews", lambda s: s["list"]["expandAll"] and items(s) == 2 + 5 + 3)
     ctrl("e")
-    until("Ctrl+E again restores the collapsed view", lambda s: not s["list"]["expandAll"] and items(s) == 3)
+    until("a second Ctrl+E shows every row", lambda s: s["list"]["expandFull"] and items(s) == 2 + 7 + 3)
+    shot("08-expand-full.png")
+    ctrl("e")
+    until("a third Ctrl+E goes back to the previews",
+          lambda s: s["list"]["expandAll"] and not s["list"]["expandFull"] and items(s) == 2 + 5 + 3)
 
     # Esc steps back: the selection, then the panel.
     key("-k", "Escape")
