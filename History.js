@@ -25,6 +25,16 @@ function tsOf(row) {
   return isFinite(timestamp) && timestamp >= 0 ? timestamp : 0
 }
 
+// When a row entered Omarchy's history. The daemon writes a row when its popup
+// closes (closed_ts) but stamps it with its arrival (ts), so a notification
+// whose popup was still up when the panel closed, or when Mark all read or a
+// clear ran, would land already "seen". Every "since you last ..." comparison
+// uses this instead of ts.
+function enteredAt(row) {
+  var closed = Number((row && row.closed_ts) || 0)
+  return Math.max(tsOf(row), isFinite(closed) && closed >= 0 ? closed : 0)
+}
+
 function pruneHidden(hidden, now) {
   var at = finite(now, nowSeconds())
   var cutoff = Math.max(0, at - HIDDEN_MAX_AGE)
@@ -97,7 +107,7 @@ function visibleRows(rows, state) {
   for (var i = 0; i < source.length; i++) {
     var row = source[i]
     var key = keyOf(row)
-    if (tsOf(row) <= current.clearedAt) continue
+    if (enteredAt(row) <= current.clearedAt) continue
     if (key && current.hidden[key] !== undefined) continue
     out.push(row)
   }
@@ -109,12 +119,13 @@ function unreadCount(rows, state) {
   var visible = visibleRows(rows, current)
   var unread = 0
   for (var i = 0; i < visible.length; i++)
-    if (tsOf(visible[i]) > current.lastSeen) unread++
+    if (enteredAt(visible[i]) > current.lastSeen) unread++
   return unread
 }
 
-// A row is new when it arrived after the panel last closed. Mark all read
-// covers new rows too, so the cutoff is whichever of the two is later.
+// A row is new when it entered history (enteredAt) after the panel last
+// closed. Mark all read covers new rows too, so the cutoff is whichever of the
+// two is later.
 function newSince(state) {
   var current = stateCopy(state, nowSeconds())
   return Math.max(current.lastOpened, current.lastSeen)
@@ -125,7 +136,7 @@ function newCount(rows, state) {
   var visible = visibleRows(rows, state)
   var count = 0
   for (var i = 0; i < visible.length; i++)
-    if (tsOf(visible[i]) > cutoff) count++
+    if (enteredAt(visible[i]) > cutoff) count++
   return count
 }
 
@@ -135,7 +146,7 @@ function countByApp(rows, cutoff) {
   var source = Array.isArray(rows) ? rows : []
   var out = {}
   for (var i = 0; i < source.length; i++) {
-    if (tsOf(source[i]) <= cutoff) continue
+    if (enteredAt(source[i]) <= cutoff) continue
     var key = appKey(source[i])
     out[key] = (out[key] || 0) + 1
   }
@@ -167,7 +178,7 @@ function clear(state, rows, now) {
   for (var i = 0; i < visible.length; i++) {
     var key = keyOf(visible[i])
     if (key) next.hidden[key] = at
-    newest = Math.max(newest, tsOf(visible[i]))
+    newest = Math.max(newest, enteredAt(visible[i]))
   }
   // The key set covers malformed/future entries exactly; the watermark covers
   // all older native rows when history.json is atomically rewritten.
@@ -202,7 +213,7 @@ function markRead(state, rows, now) {
   var next = stateCopy(state, at)
   var visible = visibleRows(rows, next)
   var newest = 0
-  for (var i = 0; i < visible.length; i++) newest = Math.max(newest, tsOf(visible[i]))
+  for (var i = 0; i < visible.length; i++) newest = Math.max(newest, enteredAt(visible[i]))
   next.lastSeen = Math.max(next.lastSeen, at, newest)
   return next
 }

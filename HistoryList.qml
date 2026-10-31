@@ -38,6 +38,10 @@ Column {
   // off restores the collapse state it replaced.
   property bool expandAll: false
   property var collapsedBeforeExpand: []
+  // Groups unfolded by hand (header or Right) while Expand all is on: these
+  // show every row instead of the preview. Reset whenever Expand all is
+  // toggled or everything is collapsed.
+  property var fullGroups: []
   readonly property int previewRows: 5
   readonly property var grouped: History.groupByApp(root.rows)
   readonly property var items: {
@@ -47,7 +51,7 @@ Column {
       var key = History.appKey(item.row)
       if (item.groupStart) out.push(item)
       else if (root.collapsed.indexOf(key) >= 0) continue
-      else if (!root.expandAll) out.push(item)
+      else if (!root.expandAll || root.fullGroups.indexOf(key) >= 0) out.push(item)
       else if (item.groupIndex < Math.max(root.previewRows, root.unreadByApp[key] || 0)) out.push(item)
     }
     return out
@@ -207,48 +211,89 @@ Column {
     if (keys.length > 0) root.removeGroupRequested(keys)
   }
 
-  function toggleExpandAll() {
-    if (root.expandAll) {
-      root.expandAll = false
-      root.collapsed = root.collapsedBeforeExpand
+  // A fold can hide the selected row, and followSelection would then fall
+  // back to its slot, which may now hold another group (Shift+Delete would
+  // hit that group). Keep the selection in its own group instead: on the row
+  // if it is still shown, else on the group's first row, which every fold
+  // keeps.
+  function keepSelectionInGroup(change) {
+    var row = root.selectedRow()
+    var key = root.selectedKey
+    change()
+    if (!row) return
+    var at = root.itemKeys.indexOf(key)
+    if (at >= 0) {
+      root.select(at)
       return
     }
-    root.collapsedBeforeExpand = root.collapsed
-    root.collapsed = []
-    root.expandAll = true
-  }
-
-  // Every group down to its header and newest row; ends Expand all.
-  function collapseAll() {
-    var keys = []
-    for (var i = 0; i < root.grouped.length; i++)
-      if (root.grouped[i].groupStart) keys.push(History.appKey(root.grouped[i].row))
-    root.expandAll = false
-    root.collapsed = keys
-  }
-
-  function toggleGroup(key) {
-    var next = root.collapsed.slice()
-    var at = next.indexOf(key)
-    if (at < 0) next.push(key)
-    else next.splice(at, 1)
-    root.collapsed = next
-  }
-
-  // Left collapses the selected row's group, Right expands it. Collapsing
-  // moves the selection to the group's surviving row, which leads it.
-  function setSelectedGroupCollapsed(collapse) {
-    var row = root.selectedRow()
-    if (!row) return
-    var key = History.appKey(row)
-    if ((root.collapsed.indexOf(key) >= 0) === collapse) return
-    root.toggleGroup(key)
+    var group = History.appKey(row)
     for (var i = 0; i < root.shownCount; i++) {
-      if (root.items[i].groupStart && History.appKey(root.items[i].row) === key) {
+      if (root.items[i].groupStart && History.appKey(root.items[i].row) === group) {
         root.select(i)
         return
       }
     }
+  }
+
+  function toggleExpandAll() {
+    root.keepSelectionInGroup(function() {
+      root.fullGroups = []
+      if (root.expandAll) {
+        root.expandAll = false
+        root.collapsed = root.collapsedBeforeExpand
+        return
+      }
+      root.collapsedBeforeExpand = root.collapsed
+      root.collapsed = []
+      root.expandAll = true
+    })
+  }
+
+  // Every group down to its header and newest row; ends Expand all.
+  function collapseAll() {
+    root.keepSelectionInGroup(function() {
+      var keys = []
+      for (var i = 0; i < root.grouped.length; i++)
+        if (root.grouped[i].groupStart) keys.push(History.appKey(root.grouped[i].row))
+      root.fullGroups = []
+      root.expandAll = false
+      root.collapsed = keys
+    })
+  }
+
+  // Unfolding a group by hand under Expand all shows all of it, not the
+  // preview: folding and unfolding is how one group gets its full list back.
+  function toggleGroup(key) {
+    root.keepSelectionInGroup(function() {
+      var next = root.collapsed.slice()
+      var at = next.indexOf(key)
+      var full = root.fullGroups.filter(function(k) { return k !== key })
+      if (at < 0) {
+        next.push(key)
+      } else {
+        next.splice(at, 1)
+        if (root.expandAll) full.push(key)
+      }
+      root.fullGroups = full
+      root.collapsed = next
+    })
+  }
+
+  // Left collapses the selected row's group, Right expands it. Collapsing
+  // moves the selection to the group's surviving row, which leads it.
+  // Under Expand all, Right on a group still showing its preview shows all of
+  // it. toggleGroup keeps the selection in the group.
+  function setSelectedGroupCollapsed(collapse) {
+    var row = root.selectedRow()
+    if (!row) return
+    var key = History.appKey(row)
+    var isCollapsed = root.collapsed.indexOf(key) >= 0
+    if (!collapse && !isCollapsed && root.expandAll && root.fullGroups.indexOf(key) < 0) {
+      root.keepSelectionInGroup(function() { root.fullGroups = root.fullGroups.concat([key]) })
+      return
+    }
+    if (isCollapsed === collapse) return
+    root.toggleGroup(key)
   }
 
   // Wheel distance in pixels: one mouse notch (120 units) moves ten rows;
@@ -456,8 +501,8 @@ Column {
           rowHeight: root.rowHeight
           tr: root.tr
           row: entry.row
-          isUnread: Number(entry.row.ts || 0) > root.lastSeen
-          isNew: Number(entry.row.ts || 0) > root.newSince
+          isUnread: History.enteredAt(entry.row) > root.lastSeen
+          isNew: History.enteredAt(entry.row) > root.newSince
           imageUrl: Images.lookup(root.imageEntries, entry.row)
           // A row folding away is never the selection, whatever index Qt gives it.
           selected: entry.lookup !== undefined && entry.index === root.currentIndex

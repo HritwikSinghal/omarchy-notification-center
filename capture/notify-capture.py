@@ -28,6 +28,7 @@ import struct
 import subprocess
 import sys
 import time
+import urllib.parse
 import zlib
 
 CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"),
@@ -37,6 +38,7 @@ INDEX = os.path.join(CACHE, "images.json")
 LIMIT = 300                  # index entries kept
 MAX_AGE = 48 * 3600          # seconds an entry and its image are kept
 MAX_FILE = 20 * 1024 * 1024  # largest image file copied in
+MAX_BYTES = 200 * 1024 * 1024  # all cached images together; oldest go first
 MAX_PIXELS = 4096 * 4096     # largest image-data accepted
 # Longest side image-data is kept at. Rows draw images at 40px (decoded at
 # 80); a track cover arrives as raw 1280x1280 RGBA, 2.3 MB once written as
@@ -123,11 +125,18 @@ def png_from_pixels(value):
         width, height, stride, has_alpha, bits, channels, pixels = value
     except (TypeError, ValueError):
         return b""
+    # The bus is open to any local process, so the struct's members are not
+    # trusted to have the types the spec gives them.
+    if not all(isinstance(v, int) for v in (width, height, stride, bits, channels)):
+        return b""
     if bits != 8 or channels not in (3, 4) or width <= 0 or height <= 0:
         return b""
     if width * height > MAX_PIXELS or stride < width * channels:
         return b""
-    raw = bytes(pixels)
+    try:
+        raw = bytes(pixels)
+    except (TypeError, ValueError):
+        return b""
     if len(raw) < stride * (height - 1) + width * channels:
         return b""
     raw, width, height = downscale(raw, width, height, stride, channels)
@@ -146,8 +155,12 @@ def png_from_pixels(value):
 def copy_file(value):
     """A local image path (or file:// URL) copied into the cache, else ""."""
     path = str(value or "")
-    if path.startswith("file://"):
-        path = path[len("file://"):]
+    if path.startswith("file:"):
+        # A URL percent-encodes spaces and non-ASCII; a plain path does not.
+        url = urllib.parse.urlparse(path)
+        if url.netloc not in ("", "localhost"):
+            return ""
+        path = urllib.parse.unquote(url.path)
     if not path.startswith("/"):
         return ""  # a theme icon name, not a file
     try:
@@ -217,10 +230,34 @@ def save_index(entries):
     os.replace(tmp, INDEX)
 
 
-def prune(entries, now):
-    """Drop entries past MAX_AGE or LIMIT, and image files nothing refers to."""
-    kept = [e for e in entries if isinstance(e, dict) and now - float(e.get("ts", 0)) <= MAX_AGE][:LIMIT]
-    referenced = {os.path.basename(str(e.get("image", ""))) for e in kept}
+def prune(entries, now, keep=()):
+    """Keep the newest entries within MAX_AGE, LIMIT and MAX_BYTES (entries
+    are newest first, so the oldest go), then delete image files nothing
+    refers to. `keep` names files of Notify calls still waiting for their
+    reply: saved already, but not in any entry yet."""
+    def recent(entry):
+        try:
+            return now - float(entry.get("ts", 0)) <= MAX_AGE
+        except (TypeError, ValueError):
+            return False
+
+    kept, used, sizes = [], 0, {}
+    for entry in entries:
+        if len(kept) >= LIMIT:
+            break
+        if not isinstance(entry, dict) or not recent(entry):
+            continue
+        name = os.path.basename(str(entry.get("image", "")))
+        if name not in sizes:
+            try:
+                sizes[name] = os.path.getsize(os.path.join(IMAGES, name))
+            except OSError:
+                continue  # its file is gone; the row would show a broken image
+            if used + sizes[name] > MAX_BYTES:
+                break
+            used += sizes[name]
+        kept.append(entry)
+    referenced = {os.path.basename(str(e.get("image", ""))) for e in kept} | set(keep)
     try:
         for name in os.listdir(IMAGES):
             if name not in referenced and not name.endswith(".tmp"):
@@ -228,6 +265,43 @@ def prune(entries, now):
     except OSError:
         pass
     return kept
+
+
+def handle(message, pending, entries):
+    """One bus message: remember a Notify call that carried an image, or pair
+    a reply with its call and record it. Returns the (new) index entries."""
+    if not isinstance(message, dict):
+        return entries
+    kind = message.get("type")
+
+    if kind == "method_call" and message.get("member") == "Notify":
+        try:
+            app, _replaces, app_icon, summary, _body, _actions, hints, _timeout = message["payload"]["data"]
+        except (KeyError, TypeError, ValueError):
+            say("warn", "Notify call with an unexpected payload")
+            return entries
+        hints = hints if isinstance(hints, dict) else {}
+        image = image_for(app_icon, hints)
+        say("debug", f"Notify from {app!r} {summary!r}: image={image or 'none'} hints={sorted(hints)}")
+        if image:
+            pending[(message.get("sender"), message.get("cookie"))] = (app, summary, image, time.time())
+
+    elif kind == "method_return":
+        key = (message.get("destination"), message.get("reply_cookie"))
+        if key not in pending:
+            return entries
+        app, summary, image, _started = pending.pop(key)
+        data = (message.get("payload") or {}).get("data") or []
+        if not data or not isinstance(data[0], int):
+            return entries
+        now = time.time()
+        record = {"id": data[0], "app": str(app), "summary": str(summary)[:256], "ts": now, "image": image}
+        waiting = {os.path.basename(v[2]) for v in pending.values()}
+        entries = prune([record] + entries, now, waiting)
+        save_index(entries)
+        print(json.dumps(record), flush=True)
+        say("debug", f"captured id={data[0]} {app!r} -> {image}")
+    return entries
 
 
 def main():
@@ -245,33 +319,12 @@ def main():
             message = json.loads(line)
         except ValueError:
             continue
-        kind = message.get("type")
-
-        if kind == "method_call" and message.get("member") == "Notify":
-            try:
-                app, _replaces, app_icon, summary, _body, _actions, hints, _timeout = message["payload"]["data"]
-            except (KeyError, TypeError, ValueError):
-                say("warn", "Notify call with an unexpected payload")
-                continue
-            image = image_for(app_icon, hints if isinstance(hints, dict) else {})
-            say("debug", f"Notify from {app!r} {summary!r}: image={image or 'none'} hints={sorted(hints)}")
-            if image:
-                pending[(message.get("sender"), message.get("cookie"))] = (app, summary, image, time.time())
-
-        elif kind == "method_return":
-            key = (message.get("destination"), message.get("reply_cookie"))
-            if key not in pending:
-                continue
-            app, summary, image, _started = pending.pop(key)
-            data = (message.get("payload") or {}).get("data") or []
-            if not data or not isinstance(data[0], int):
-                continue
-            now = time.time()
-            record = {"id": data[0], "app": str(app), "summary": str(summary)[:256], "ts": now, "image": image}
-            entries = prune([record] + entries, now)
-            save_index(entries)
-            print(json.dumps(record), flush=True)
-            say("debug", f"captured id={data[0]} {app!r} -> {image}")
+        # Any local process can put a message on the bus; one the code below
+        # does not expect is skipped, never allowed to end the helper.
+        try:
+            entries = handle(message, pending, entries)
+        except Exception as error:  # noqa: BLE001 -- see above
+            say("warn", f"skipped a bus message: {error!r}")
 
         # Calls whose reply never came (an error, a dropped message) expire.
         now = time.time()

@@ -19,8 +19,10 @@ Item {
   property int restarts: 0
   property string lastError: ""
 
+  // The same cache directory the helper picks: XDG_CACHE_HOME, else ~/.cache.
   readonly property string indexPath:
-    Quickshell.env("HOME") + "/.cache/gabodev.notification-center/images.json"
+    (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache"))
+      + "/gabodev.notification-center/images.json"
   readonly property string scriptPath:
     decodeURIComponent(String(Qt.resolvedUrl("capture/notify-capture.py")).replace(/^file:\/\//, ""))
 
