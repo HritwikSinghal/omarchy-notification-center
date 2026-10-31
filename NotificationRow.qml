@@ -18,6 +18,8 @@ Rectangle {
   property real rowHeight: Style.space(88)
   // The track's cover for a media row, from the panel's art cache; "" for none.
   property string artUrl: ""
+  // The image the notification itself carried (ImageCapture); "" for none.
+  property string imageUrl: ""
 
   // The app's icon: the notification's own app_icon when it sent one (a path
   // or a theme name), else the icon of the desktop entry its app name matches.
@@ -98,9 +100,10 @@ Rectangle {
     visible: rowItem.isUnread
   }
 
-  // Thumbnail: the track's cover for a media row (Art.js), with the app's icon
-  // as a corner badge; else the app's icon; else the row's glyph (or a bell)
-  // on a tile. A cover that fails to load falls back to the icon.
+  // Thumbnail: the image the notification carried (a screenshot, a cover),
+  // else the track's cover for a media row (Art.js), with the app's icon as a
+  // corner badge; else the app's icon; else the row's glyph (or a bell) on a
+  // tile. An image that fails to load falls back to the icon.
   Rectangle {
     id: thumb
     anchors.left: dot.right
@@ -118,7 +121,8 @@ Rectangle {
     Image {
       id: cover
       anchors.fill: parent
-      source: rowItem.artUrl
+      // The notification's own image first, else a track cover.
+      source: rowItem.imageUrl !== "" ? rowItem.imageUrl : rowItem.artUrl
       sourceSize.width: width * 2
       sourceSize.height: height * 2
       fillMode: Image.PreserveAspectCrop

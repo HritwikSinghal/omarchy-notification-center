@@ -4,6 +4,7 @@ import Quickshell.Io
 import Quickshell.Services.Mpris
 
 import "Art.js" as Art
+import "Debug.js" as Debug
 
 // Notes every track the MPRIS players announce -- title, artist, cover URL --
 // so media rows in the history can show their cover (Art.js). It lives in the
@@ -35,6 +36,7 @@ Item {
     }, Date.now() / 1000)
     if (next === root.entries) return
     root.entries = next
+    Debug.log("art", "recorded", player.desktopEntry || player.identity, player.trackTitle, player.trackArtUrl)
     if (root.loaded) saveTimer.restart()
   }
 

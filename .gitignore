@@ -1,3 +1,4 @@
 # Local editor and manual backups.
 *.bak
 *.bak.*
+__pycache__/

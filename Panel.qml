@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import qs.Commons as Commons
 import qs.Ui
 
+import "Debug.js" as Debug
 import "History.js" as History
 
 // gabodev.notification-center panel: the notification history Omarchy keeps,
@@ -43,6 +44,68 @@ Item {
   // Track covers for media rows; always running, since the panel stays loaded.
   ArtRecorder {
     id: artRecorder
+  }
+
+  // Images notifications carried, which Omarchy's history drops; every row
+  // whose notification had one shows it (ImageCapture, Images.js).
+  ImageCapture {
+    id: imageCapture
+    debug: root.debugEnabled
+  }
+
+  // ------------------------------------------------------------- debugging
+  // Debug.js logs to the shell log while this is on. The setting survives
+  // restarts in a one-line file; IPC flips it and dumps live state:
+  //   omarchy-shell notification-center debug on|off
+  //   omarchy-shell notification-center state
+  property bool debugEnabled: false
+  onDebugEnabledChanged: {
+    Debug.enabled = root.debugEnabled
+    console.log("[nc:panel] debug " + (root.debugEnabled ? "on" : "off"))
+  }
+  readonly property string debugPath:
+    Quickshell.env("HOME") + "/.config/omarchy/gabodev.notification-center/debug"
+
+  FileView {
+    id: debugFile
+    path: root.debugPath
+    watchChanges: false
+    printErrors: false
+    onLoaded: root.debugEnabled = debugFile.text().trim() === "1"
+  }
+
+  function stateDump() {
+    return JSON.stringify({
+      opened: root.opened,
+      anchorX: root.anchorX,
+      debug: root.debugEnabled,
+      history: { source: (root.notifService && root.notifService.historyLoaded) ? "service" : "file",
+                 all: root.allEntries.length, visible: root.entries.length,
+                 shown: root.shownEntries.length, loadFailed: root.historyLoadFailed },
+      view: { lastSeen: root.lastSeen, clearedAt: root.clearedAt,
+              hidden: Object.keys(root.hidden || {}).length, unread: root.unread },
+      search: root.query,
+      list: { items: historyList.shownCount, selectedKey: historyList.selectedKey,
+              currentIndex: historyList.currentIndex, collapsed: historyList.collapsed },
+      art: { entries: artRecorder.entries.length, loaded: artRecorder.loaded },
+      capture: { running: imageCapture.running, images: imageCapture.entries.length,
+                 restarts: imageCapture.restarts, lastError: imageCapture.lastError,
+                 script: imageCapture.scriptPath }
+    }, null, 2)
+  }
+
+  Commons.ShellIpc {
+    target: "notification-center"
+
+    function state(): string { return root.stateDump() }
+
+    function debug(value: string): string {
+      var v = String(value || "").toLowerCase()
+      var on = v === "on" || v === "1" || v === "true" || v === "yes"
+      root.debugEnabled = on
+      debugFile.setText(on ? "1\n" : "0\n")
+      return on ? "on" : "off"
+    }
   }
   readonly property var notifService: (root.shell && root.shell.firstPartyServiceFor)
     ? root.shell.firstPartyServiceFor("omarchy.notifications")
@@ -130,6 +193,7 @@ Item {
     try { x = Number(JSON.parse(payloadJson || "{}").anchorX) } catch (e) { x = -1 }
     root.anchorX = isFinite(x) && x > 0 ? x : -1
     root.opened = true;
+    Debug.log("panel", "open", { anchorX: root.anchorX, rows: root.entries.length, unread: root.unread });
     // Every open starts unfiltered, with the keyboard in the search line, so
     // typing searches at once and Esc still closes.
     searchField.clear();
@@ -141,6 +205,7 @@ Item {
   }
 
   function close() {
+    Debug.log("panel", "close");
     root.opened = false;
   }
 
@@ -154,6 +219,7 @@ Item {
   // Every footer action also closes the panel: the point of pressing one is to
   // be done with the list, not to look at the result.
   function markRead() {
+    Debug.log("panel", "mark all read");
     var rows = root.entries.slice();
     var at = Date.now() / 1000;
     root.mutateHistory(function(state) { return History.markRead(state, rows, at); });
@@ -161,6 +227,7 @@ Item {
   }
 
   function hideEntry(key) {
+    Debug.log("panel", "hide", key);
     var k = String(key || "");
     if (k === "")
       return;
@@ -170,6 +237,7 @@ Item {
 
   // A whole group at once: one state change and one save, not one per row.
   function hideEntries(keys) {
+    Debug.log("panel", "hide group", (keys || []).length, "rows");
     var list = (keys || []).map(function(key) { return String(key || ""); })
                            .filter(function(key) { return key !== ""; });
     if (list.length === 0)
@@ -184,6 +252,7 @@ Item {
   }
 
   function closeAll() {
+    Debug.log("panel", "close all");
     var rows = root.entries.slice();
     var at = Date.now() / 1000;
     root.mutateHistory(function(state) { return History.clear(state, rows, at); });
@@ -193,6 +262,7 @@ Item {
   }
 
   function clearHistory() {
+    Debug.log("panel", "clear history");
     var rows = root.entries.slice();
     var at = Date.now() / 1000;
     root.mutateHistory(function(state) { return History.clear(state, rows, at); });
@@ -208,6 +278,7 @@ Item {
 
   function activateEntry(row) {
     var action = navigator.resolve(row);
+    Debug.log("panel", "activate", { key: row ? row.key : "", app: row ? row.app : "", action: action.kind, ok: action.ok });
     if (!action.ok) {
       root.showNavigationFeedback();
       return;
@@ -268,11 +339,15 @@ Item {
         var data = JSON.parse(historyFile.text());
         if (Array.isArray(data)) {
           root.fallbackRows = data;
+          Debug.log("history", "loaded", data.length, "rows from history.json");
           root.historyLoadFailed = false;
         } else {
+          Debug.warn("history", "history.json is not a list");
           root.historyLoadFailed = true;
         }
       } catch (error) {
+        // An atomic rewrite can be caught mid-way; the next change reloads.
+        Debug.log("history", "history.json unreadable this time:", String(error));
         root.historyLoadFailed = true;
       }
     }
@@ -390,6 +465,7 @@ Item {
           tr: strings
           rows: root.shownEntries
           artEntries: artRecorder.entries
+          imageEntries: imageCapture.entries
           emptyText: root.query !== "" ? strings.t("panel.noMatches") : strings.t("panel.empty")
           lastSeen: root.lastSeen
           // Two thirds of the screen: tall enough to scan a day's history,

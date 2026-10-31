@@ -4,7 +4,9 @@ import qs.Commons as Commons
 
 import "Fonts.js" as Fonts
 import "Art.js" as Art
+import "Debug.js" as Debug
 import "History.js" as History
+import "Images.js" as Images
 
 // The scrolling history and the empty state that stands in for it. Whole rows
 // only: a list that ends mid-row reads as a bug.
@@ -19,6 +21,8 @@ Column {
   readonly property real headerHeight: Style.space(36)
   // The panel's track-cover cache (ArtRecorder); media rows look theirs up.
   property var artEntries: []
+  // Images notifications carried (ImageCapture); a row's own image wins.
+  property var imageEntries: []
   // What the empty state says: the panel swaps in "no matches" while searching.
   property string emptyText: ""
   // Tallest the list may grow; the panel sets it from the screen height.
@@ -64,10 +68,14 @@ Column {
   }
 
   function syncModel() {
+    var removed = 0, moved = 0, inserted = 0
     var target = root.itemKeys
     var wanted = new Set(target)
     for (var i = rowModel.count - 1; i >= 0; i--)
-      if (!wanted.has(rowModel.get(i).key)) rowModel.remove(i)
+      if (!wanted.has(rowModel.get(i).key)) {
+        rowModel.remove(i)
+        removed++
+      }
     for (var j = 0; j < target.length; j++) {
       if (j < rowModel.count && rowModel.get(j).key === target[j]) continue
       var at = -1
@@ -77,10 +85,17 @@ Column {
           break
         }
       }
-      if (at >= 0) rowModel.move(at, j, 1)
-      else rowModel.insert(j, { key: target[j] })
+      if (at >= 0) {
+        rowModel.move(at, j, 1)
+        moved++
+      } else {
+        rowModel.insert(j, { key: target[j] })
+        inserted++
+      }
     }
     while (rowModel.count > target.length) rowModel.remove(rowModel.count - 1)
+    if (rowModel.count !== target.length) Debug.warn("list", "model out of step", rowModel.count, "vs", target.length)
+    Debug.log("list", "sync", { rows: target.length, removed: removed, moved: moved, inserted: inserted })
   }
 
   onItemKeysChanged: {
@@ -110,6 +125,7 @@ Column {
     }
     root.currentIndex = index
     root.selectedKey = root.itemKeys[index]
+    Debug.log("list", "select", index, root.selectedKey)
     list.positionViewAtIndex(index, ListView.Contain)
   }
 
@@ -399,6 +415,7 @@ Column {
           row: entry.row
           isUnread: Number(entry.row.ts || 0) > root.lastSeen
           artUrl: Art.lookup(root.artEntries, entry.row)
+          imageUrl: Images.lookup(root.imageEntries, entry.row)
           // A row folding away is never the selection, whatever index Qt gives it.
           selected: entry.lookup !== undefined && entry.index === root.currentIndex
 
