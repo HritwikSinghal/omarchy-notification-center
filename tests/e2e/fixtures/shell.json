@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "bar": {
+    "layout": {
+      "left": [],
+      "centerBegin": [],
+      "center": [],
+      "centerEnd": [],
+      "right": [{ "id": "gabodev.notification-center" }]
+    }
+  },
+  "plugins": [],
+  "disabledPlugins": ["omarchy.lock", "omarchy.idle"]
+}

@@ -74,8 +74,11 @@ expected, not a fault.
   daemon's reply by (call sender + cookie) = (reply destination + reply_cookie); the reply's
   id equals the history row's `originalId`. Ids restart at 1 on every shell restart, so
   rows match on id + app + time within 60s.
-- Tests: none in the repo yet. History.js and Shortcuts.js are `.pragma library` files that
-  load in node after stripping the pragma line; the helper's pure functions import in python.
+- Tests: `tests/run.sh` (node --test for History/Shortcuts/Images, unittest for the
+  helper; mutation-audited 2026-10-31) and `tests/e2e/smoke.py OUT` (hidden isolated
+  desktop via `tests/e2e/nce`: private runtime dir + D-Bus + HOME, nested Hyprland on a
+  headless E2E output, real Omarchy shell and daemon, wtype keys, grim shots). Runbook,
+  screenshot checklist and traps: `docs/TESTING.md`. Run both before calling a change done.
 
 ## Things learned
 - Frame rate: a full-screen 4K layer animated at 93-121fps on a 240Hz monitor; a 680x1620

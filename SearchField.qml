@@ -17,6 +17,8 @@ Rectangle {
 
   required property var tr
   readonly property string text: input.text
+  // Whether keys reach the search line now; tests wait on it after opening.
+  readonly property bool inputFocused: input.activeFocus
   // Whether the list has a keyboard selection. Enter and Delete act on it
   // only then; with none they edit the query as usual.
   property bool hasSelection: false

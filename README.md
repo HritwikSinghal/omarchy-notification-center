@@ -144,6 +144,17 @@ omarchy-shell notification-center debug on   # log to the shell log ([nc:...] li
 omarchy-shell notification-center debug off
 ```
 
+## Development
+
+```sh
+tests/run.sh                      # unit tests
+tests/e2e/smoke.py /tmp/nce-out   # end to end, on a hidden desktop
+```
+
+The end-to-end test runs its own isolated Omarchy desktop and never touches
+yours. See [docs/TESTING.md](docs/TESTING.md) for what it checks and how to
+drive it by hand.
+
 ## Uninstall
 
 ```sh

@@ -81,6 +81,8 @@ Item {
       view: { lastSeen: root.lastSeen, lastOpened: root.lastOpened, clearedAt: root.clearedAt,
               hidden: Object.keys(root.hidden || {}).length, unread: root.unread, fresh: root.fresh },
       search: root.query,
+      keyFocus: searchField.inputFocused,
+      undo: { steps: root.undoStack.length, footer: root.undoText },
       list: { items: historyList.shownCount, selectedKey: historyList.selectedKey,
               expandAll: historyList.expandAll,
               currentIndex: historyList.currentIndex, collapsed: historyList.collapsed },

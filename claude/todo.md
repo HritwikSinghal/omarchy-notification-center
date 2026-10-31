@@ -7,6 +7,9 @@
   the shell (workstream "Where things live").
 - A shortcut is added in one place, `Shortcuts.js`; the footer hint and the key handler both
   read that table.
+- Before calling a change done: `tests/run.sh`, then `tests/e2e/smoke.py <dir>` and look at
+  its screenshots against the checklist in `docs/TESTING.md`. New logic gets a test that
+  fails on a broken copy (mutation check), not just one that passes.
 
 ## Open
 - [ ] `notification-panel`: 82d8032 loaded (bug-finder fixes, not pushed); next = visual

@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# nce -- a hidden, isolated Omarchy desktop for testing this plugin end to end.
+#
+#   nce up            start it (blocks until `nce down`; run it in the background)
+#   nce wait          wait until the shell inside answers
+#   nce run CMD...    run a command inside: notify-send, wtype, omarchy-shell, ...
+#   nce state         the panel's state as JSON
+#   nce shot FILE     screenshot the test screen (E2E) to FILE
+#   nce down          stop it
+#
+# Isolation: the session gets its own XDG_RUNTIME_DIR (so its Wayland, Hyprland
+# and shell sockets are its own), its own D-Bus session bus (so notifications
+# go to the Omarchy daemon inside, never to the real one), and its own HOME
+# (fixture config; the plugin is this repository's working tree, linked in).
+# Nothing it runs can reach the real desktop's compositor, shell or history.
+# The nested Hyprland draws to a headless output named E2E; screenshots and
+# the panel use that output, so the result does not depend on the real screen.
+set -euo pipefail
+
+REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+HERE=$REPO/tests/e2e
+# Sockets live under the session dir, and a socket path may not exceed 108
+# bytes, so the session dir sits directly in TMPDIR with a short name.
+BASE=${TMPDIR:-/tmp}
+CURRENT=$BASE/nce-current   # symlink to the live session's directory
+
+die() { echo "nce: $*" >&2; exit 1; }
+
+session() {
+  [[ -d $CURRENT && -f $CURRENT/env ]] || die "no session; start one with: nce up"
+  echo "$CURRENT"
+}
+
+in_session() {
+  local dir; dir=$(session)
+  # shellcheck disable=SC1091
+  ( source "$dir/env" && exec "$@" )
+}
+
+make_home() {
+  local home=$1
+  mkdir -p "$home/.config/omarchy/plugins" "$home/.local/state/omarchy/notifications" "$home/.cache"
+  cp "$HERE/fixtures/shell.json" "$home/.config/omarchy/shell.json"
+  ln -s "$REPO" "$home/.config/omarchy/plugins/gabodev.notification-center"
+  # The theme only decides colours; borrow the real one when there is one.
+  local theme=${REAL_HOME:-$HOME}/.local/state/omarchy/current
+  [[ -e $theme ]] && ln -s "$theme" "$home/.local/state/omarchy/current"
+  local fonts=${REAL_HOME:-$HOME}/.local/share/fonts
+  if [[ -d $fonts ]]; then mkdir -p "$home/.local/share"; ln -s "$fonts" "$home/.local/share/fonts"; fi
+}
+
+host_display() {
+  local display=${WAYLAND_DISPLAY:-}
+  [[ -n $display ]] || die "needs a running Wayland session (WAYLAND_DISPLAY is empty)"
+  [[ $display == /* ]] || display=${XDG_RUNTIME_DIR:-/run/user/$UID}/$display
+  [[ -S $display ]] || die "no Wayland socket at $display"
+  echo "$display"
+}
+
+cmd_up() {
+  [[ ! -e $CURRENT/ready ]] || die "a session is already up at $(readlink -f "$CURRENT"); nce down first"
+  local host dir
+  host=$(host_display)
+  dir=$(mktemp -d "$BASE/nce.XXXX")
+  mkdir -m 700 "$dir/r"
+  REAL_HOME=$HOME make_home "$dir/h"
+  ln -sfn "$dir" "$CURRENT"
+  echo "nce: session in $dir"
+  exec dbus-run-session -- "$0" _inside "$dir" "$host"
+}
+
+# Runs inside dbus-run-session: everything below shares the private bus and
+# ends with the nested Hyprland.
+cmd_inside() {
+  local dir=$1 host=$2
+  export XDG_RUNTIME_DIR=$dir/r HOME=$dir/h
+  unset HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY DISPLAY \
+        XDG_CONFIG_HOME XDG_STATE_HOME XDG_CACHE_HOME XDG_DATA_HOME
+
+  WAYLAND_DISPLAY=$host Hyprland -c "$HERE/hyprland.lua" > "$dir/hyprland.log" 2>&1 &
+  local hypr=$!
+  local i
+  for i in $(seq 1 100); do
+    compgen -G "$dir/r/hypr/*/.socket.sock" > /dev/null && break
+    sleep 0.1
+  done
+  compgen -G "$dir/r/hypr/*/.socket.sock" > /dev/null || die "nested Hyprland did not start (see $dir/hyprland.log)"
+  HYPRLAND_INSTANCE_SIGNATURE=$(basename "$(dirname "$(compgen -G "$dir/r/hypr/*/.socket.sock" | head -n1)")")
+  WAYLAND_DISPLAY=$(cd "$dir/r" && compgen -G 'wayland-[0-9]*' | grep -v '\.lock$' | head -n1)
+  export HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY
+
+  {
+    local var
+    for var in XDG_RUNTIME_DIR HOME HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS OMARCHY_PATH PATH; do
+      printf 'export %s=%q\n' "$var" "${!var}"
+    done
+  } > "$dir/env"
+
+  # A fixed-size headless screen for the panel and the screenshots; the
+  # nested window on the real desktop is switched off.
+  hyprctl output create headless E2E > /dev/null
+  sleep 0.3
+  # With the nested window's output off, E2E is the only screen and so has focus.
+  hyprctl eval 'hl.monitor({ output = "WAYLAND-1", disabled = true })' > /dev/null
+
+  qs -p "$OMARCHY_PATH/shell" > "$dir/shell.log" 2>&1 &
+  for i in $(seq 1 150); do
+    omarchy-shell notification-center state 2> /dev/null | grep -q '"opened"' && break
+    sleep 0.2
+  done
+  if omarchy-shell notification-center state 2> /dev/null | grep -q '"opened"'; then
+    touch "$dir/ready"
+    echo "nce: ready"
+  else
+    echo "nce: the plugin did not answer; see $dir/shell.log" >&2
+  fi
+  wait "$hypr" || true
+  rm -f "$dir/ready"
+  echo "nce: session ended"
+}
+
+cmd_wait() {
+  local i
+  for i in $(seq 1 ${1:-60}); do
+    [[ -e $CURRENT/ready ]] && return 0
+    sleep 1
+  done
+  die "session not ready after ${1:-60}s"
+}
+
+cmd_shot() {
+  [[ $# -eq 1 ]] || die "usage: nce shot FILE"
+  in_session grim -o E2E "$1"
+}
+
+case ${1:-} in
+  up) shift; cmd_up "$@" ;;
+  _inside) shift; cmd_inside "$@" ;;
+  wait) shift; cmd_wait "$@" ;;
+  run) shift; in_session "$@" ;;
+  state) in_session omarchy-shell notification-center state ;;
+  shot) shift; cmd_shot "$@" ;;
+  # Hyprland's Lua config mode takes Lua dispatchers: `dispatch exit` is an error.
+  down) in_session hyprctl dispatch 'hl.dsp.exit()' > /dev/null ;;
+  *) sed -n '2,10p' "$0"; exit 2 ;;
+esac
