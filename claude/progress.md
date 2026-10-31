@@ -8,7 +8,7 @@ standing rules and one `## Open` line per topic.
 
 | Workstream | State |
 |---|---|
-| `notification-panel` | Panel features loaded at 357e06d (groups, search, shortcuts, undo, NEW highlight, expand/collapse, captured images). Owed: visual check, bug-finder triage, push, README. Live action buttons parked. |
+| `notification-panel` | Panel features loaded at 82d8032 (groups, search, shortcuts, undo, NEW highlight, expand/collapse, captured images); bug-finder findings fixed. Owed: visual check, push. Live action buttons parked. |
 
 ## Next actions
 

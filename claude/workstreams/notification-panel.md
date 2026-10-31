@@ -7,7 +7,7 @@ status: active (resume point at top); live action buttons PARKED 2026-10-31
 # Notification history panel
 
 ## Resume point (2026-10-31)
-HEAD `357e06d` on main, installed and loaded; `7331abd..357e06d` are not pushed yet.
+Plugin code `82d8032` installed and loaded (not pushed; `0322629` is).
 Licence is GPL-3.0-or-later (LICENSE); upstream's MIT notice is kept in LICENSE.MIT for
 code through 7ec034b. Built on top of upstream 7ec034b:
 - Group by app (collapsible, animated by row height), search, keyboard nav (arrows by row,
@@ -30,13 +30,21 @@ code through 7ec034b. Built on top of upstream 7ec034b:
 - The MPRIS track-cover cache (Art.js / ArtRecorder.qml) was removed: tidal-hifi sends its
   cover as image-data, which the capture helper keeps.
 
+- Bug-finder pass over `7ec034b..357e06d` (2026-10-31), fixed in `82d8032`: image cleanup
+  deleting a pending call's image (reproduced, fixed, re-run passes); new/unread/clear
+  judged by arrival `ts` although a row enters history at popup close (now `enteredAt` =
+  max(ts, closed_ts)); folds moving the selection into another group; malformed bus
+  messages crashing the helper; `file://` URLs not percent-decoded; no byte cap on the
+  cache (now 200 MB); ImageCapture ignoring XDG_CACHE_HOME. Under Expand all, unfolding
+  a group by hand (header or Right) shows all its rows.
+
 Next:
-1. Visual check of the loaded build: footer fit (esp. Spanish labels), NEW highlight,
-   expand/collapse, undo line. Not visually verified yet.
-2. Bug-finder pass over `7ec034b..HEAD` (2026-10-31): triage its findings.
-3. Push when the maintainer says so.
-4. README drift: it documents none of search / groups / shortcuts / undo / NEW.
-5. Parked: live action buttons (below).
+1. Visual check of the loaded build: NEW highlight, expand/collapse incl. unfolding one
+   group fully, undo line, Spanish footer fit.
+2. Push 82d8032 when the maintainer says so.
+3. CHANGELOG.md and manifest.json still say upstream's 1.0.0 / gabodev; a 2.0.0 entry
+   is suggested, not agreed.
+4. Parked: live action buttons (below).
 
 Debugging: `omarchy-shell notification-center debug on|off` (persisted in
 `~/.config/omarchy/gabodev.notification-center/debug`), `omarchy-shell notification-center

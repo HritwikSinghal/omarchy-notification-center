@@ -9,7 +9,8 @@
   read that table.
 
 ## Open
-- [ ] `notification-panel`: HEAD 357e06d loaded; next = visual check (footer fit, NEW
-  highlight, expand/collapse, undo line), triage the 2026-10-31 bug-finder pass, push,
-  README drift. Live action buttons PARKED (minimal Service.qml patch vs upstream API
-  request) -> `claude/workstreams/notification-panel.md`
+- [ ] `notification-panel`: 82d8032 loaded (bug-finder fixes, not pushed); next = visual
+  check (NEW highlight, expand/collapse, undo line), push, maybe a 2.0.0
+  CHANGELOG/manifest bump. Live action buttons PARKED
+  (minimal Service.qml patch vs upstream API request)
+  -> `claude/workstreams/notification-panel.md`
