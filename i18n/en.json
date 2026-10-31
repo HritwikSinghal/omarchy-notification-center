@@ -18,5 +18,9 @@
   "bell.silencedUnread": "%1 unread · notifications silenced",
   "panel.navigationUnavailable": "This notification can’t be opened safely.",
   "panel.search": "Search app, title or body",
-  "panel.noMatches": "No notifications match."
+  "panel.noMatches": "No notifications match.",
+  "panel.cleared": {
+    "one": "Cleared %1 notification. %2 to undo",
+    "other": "Cleared %1 notifications. %2 to undo"
+  }
 }

@@ -7,7 +7,9 @@
 var actions = {
   markRead: { key: "M", label: "Ctrl+M" },
   closeAll: { key: "D", label: "Ctrl+D" },  // "dismiss"
-  clear: { key: "L", label: "Ctrl+L" }
+  clear: { key: "L", label: "Ctrl+L" },
+  // Only while a clear can be undone; otherwise Ctrl+Z undoes typing.
+  undo: { key: "Z", label: "Ctrl+Z" }
 }
 
 // Close is Esc, which SearchField already steps back through.

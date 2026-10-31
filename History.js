@@ -137,6 +137,26 @@ function clear(state, rows, now) {
   return next
 }
 
+// Reverses one clear, given the state just before it and just after it, on top
+// of whatever happened since: only what that clear changed is put back, so a
+// row hidden or a mark-read made afterwards survives the undo. Keys the clear
+// added are dropped unless re-hidden since; keys its pruning dropped return.
+function undoClear(state, before, after, now) {
+  var at = finite(now, nowSeconds())
+  var next = stateCopy(state, at)
+  var was = stateCopy(before, at)
+  var cleared = stateCopy(after, at)
+  for (var key in cleared.hidden)
+    if (was.hidden[key] === undefined && next.hidden[key] === cleared.hidden[key])
+      delete next.hidden[key]
+  for (var oldKey in was.hidden)
+    if (cleared.hidden[oldKey] === undefined && next.hidden[oldKey] === undefined)
+      next.hidden[oldKey] = was.hidden[oldKey]
+  if (next.clearedAt === cleared.clearedAt) next.clearedAt = was.clearedAt
+  next.hidden = pruneHidden(next.hidden, at)
+  return next
+}
+
 function markRead(state, rows, now) {
   var at = finite(now, nowSeconds())
   var next = stateCopy(state, at)

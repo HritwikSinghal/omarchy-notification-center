@@ -18,5 +18,9 @@
   "bell.silencedUnread": "%1 sin leer · notificaciones silenciadas",
   "panel.navigationUnavailable": "Esta notificación no se puede abrir de forma segura.",
   "panel.search": "Buscar app, t\u00edtulo o texto",
-  "panel.noMatches": "Ninguna notificaci\u00f3n coincide."
+  "panel.noMatches": "Ninguna notificaci\u00f3n coincide.",
+  "panel.cleared": {
+    "one": "Se ocult\u00f3 %1 notificaci\u00f3n. %2 para deshacer",
+    "other": "Se ocultaron %1 notificaciones. %2 para deshacer"
+  }
 }

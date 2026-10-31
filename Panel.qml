@@ -7,6 +7,7 @@ import qs.Ui
 
 import "Debug.js" as Debug
 import "History.js" as History
+import "Shortcuts.js" as Shortcuts
 
 // gabodev.notification-center panel: the notification history Omarchy keeps,
 // which its own UI only shows as transient toasts.
@@ -132,6 +133,16 @@ Item {
   property var pendingStateActions: []
 
   property string navigationFeedback: ""
+
+  // The last clear (Clear history or Close all) while it can still be undone:
+  // { before, after, count }, else null. The footer says so and how.
+  property var lastClear: null
+  readonly property int undoWindow: 10000
+  readonly property string undoText: root.lastClear
+    ? strings.tn("panel.cleared", root.lastClear.count)
+        .arg(Commons.I18n.formatNumber(root.lastClear.count))
+        .arg(Shortcuts.actions.undo.label)
+    : ""
   readonly property var entries: History.visibleRows(root.allEntries, root.historyState())
 
   // The search line's text, and the rows it lets through. Footer actions still
@@ -216,8 +227,9 @@ Item {
       root.close();
   }
 
-  // Every footer action also closes the panel: the point of pressing one is to
-  // be done with the list, not to look at the result.
+  // Mark all read closes the panel: the point of pressing it is to be done
+  // with the list. Clear history and Close all keep it open instead, for
+  // undoWindow, so the undo line is seen and Ctrl+Z reaches the search line.
   function markRead() {
     Debug.log("panel", "mark all read");
     var rows = root.entries.slice();
@@ -251,22 +263,49 @@ Item {
     });
   }
 
+  // Hides every visible row and remembers the view state on either side, so
+  // undoClear can reverse just this clear (History.undoClear).
+  function clearVisible() {
+    var rows = root.entries.slice();
+    // Nothing to hide; a second press must not cancel the pending undo.
+    if (rows.length === 0)
+      return;
+    var at = Date.now() / 1000;
+    var before = root.historyState();
+    root.mutateHistory(function(state) { return History.clear(state, rows, at); });
+    // A clear queued before the config loaded has no settled state to undo to.
+    root.lastClear = root.configReady
+      ? { before: before, after: root.historyState(), count: rows.length }
+      : null;
+    if (root.lastClear)
+      undoTimer.restart();
+    else
+      undoTimer.stop();
+  }
+
+  // Undo brings the rows back to the panel; popups Close all dismissed stay
+  // dismissed.
   function closeAll() {
     Debug.log("panel", "close all");
-    var rows = root.entries.slice();
-    var at = Date.now() / 1000;
-    root.mutateHistory(function(state) { return History.clear(state, rows, at); });
+    root.clearVisible();
     dismissAllProc.running = false;
     dismissAllProc.running = true;
-    root.dismiss();
   }
 
   function clearHistory() {
     Debug.log("panel", "clear history");
-    var rows = root.entries.slice();
+    root.clearVisible();
+  }
+
+  function undoClear() {
+    var record = root.lastClear;
+    if (!record)
+      return;
+    Debug.log("panel", "undo clear", record.count, "rows");
+    root.lastClear = null;
+    undoTimer.stop();
     var at = Date.now() / 1000;
-    root.mutateHistory(function(state) { return History.clear(state, rows, at); });
-    root.dismiss();
+    root.mutateHistory(function(state) { return History.undoClear(state, record.before, record.after, at); });
   }
 
   // Persisted history has no live notification action or message deep link. A
@@ -326,6 +365,12 @@ Item {
     id: navigationFeedbackTimer
     interval: 2100
     onTriggered: root.navigationFeedback = ""
+  }
+
+  Timer {
+    id: undoTimer
+    interval: root.undoWindow
+    onTriggered: root.lastClear = null
   }
 
   FileView {
@@ -446,6 +491,7 @@ Item {
           id: searchField
           tr: strings
           hasSelection: historyList.hasSelection
+          canUndoClear: root.lastClear !== null
           // A new query reshuffles the rows, so a selection would land on an
           // unrelated one; start over instead.
           onTextChanged: {
@@ -463,6 +509,7 @@ Item {
             if (action === "markRead") root.markRead()
             else if (action === "closeAll") root.closeAll()
             else if (action === "clear") root.clearHistory()
+            else if (action === "undo") root.undoClear()
           }
         },
         HistoryList {
@@ -482,7 +529,7 @@ Item {
         },
         PanelFooter {
           tr: strings
-          feedback: root.navigationFeedback
+          feedback: root.navigationFeedback !== "" ? root.navigationFeedback : root.undoText
           showRule: root.entries.length > 0
           onMarkReadRequested: root.markRead()
           onCloseAllRequested: root.closeAll()
