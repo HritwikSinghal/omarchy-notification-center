@@ -123,4 +123,7 @@ rm -rf ~/.config/omarchy/gabodev.notification-center
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+GPL-3.0-or-later. See [LICENSE](LICENSE).
+
+Forked from [GaboEI/omarchy-notification-center](https://github.com/GaboEI/omarchy-notification-center),
+which is MIT-licensed; its notice is kept in [LICENSE.MIT](LICENSE.MIT).
