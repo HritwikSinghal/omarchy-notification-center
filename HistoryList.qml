@@ -44,18 +44,9 @@ Column {
   property var fullGroups: []
   readonly property int previewRows: 5
   readonly property var grouped: History.groupByApp(root.rows)
-  readonly property var items: {
-    var out = []
-    for (var i = 0; i < root.grouped.length && out.length < 100; i++) {
-      var item = root.grouped[i]
-      var key = History.appKey(item.row)
-      if (item.groupStart) out.push(item)
-      else if (root.collapsed.indexOf(key) >= 0) continue
-      else if (!root.expandAll || root.fullGroups.indexOf(key) >= 0) out.push(item)
-      else if (item.groupIndex < Math.max(root.previewRows, root.unreadByApp[key] || 0)) out.push(item)
-    }
-    return out
-  }
+  readonly property var items: History.shownItems(root.grouped, root.collapsed, root.expandAll,
+                                                  root.fullGroups, root.unreadByApp,
+                                                  root.previewRows, 100)
   readonly property int shownCount: root.items.length
 
   // The view's model holds only each shown row's key, kept in step with

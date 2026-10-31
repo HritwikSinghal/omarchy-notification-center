@@ -262,3 +262,21 @@ function groupByApp(rows) {
   })
   return out
 }
+
+// The items HistoryList draws, from groupByApp's output: every group's first
+// row (its header sits on it); nothing more of a collapsed group; under Expand
+// all, the newest `preview` rows or all its unread ones if more, unless the
+// group was unfolded by hand (`full`); otherwise every row. At most `limit`.
+function shownItems(grouped, collapsed, expandAll, full, unreadByApp, preview, limit) {
+  var source = Array.isArray(grouped) ? grouped : []
+  var out = []
+  for (var i = 0; i < source.length && out.length < limit; i++) {
+    var item = source[i]
+    var key = appKey(item.row)
+    if (item.groupStart) out.push(item)
+    else if (collapsed.indexOf(key) >= 0) continue
+    else if (!expandAll || full.indexOf(key) >= 0) out.push(item)
+    else if (item.groupIndex < Math.max(preview, (unreadByApp && unreadByApp[key]) || 0)) out.push(item)
+  }
+  return out
+}
