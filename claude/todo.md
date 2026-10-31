@@ -12,8 +12,7 @@
   fails on a broken copy (mutation check), not just one that passes.
 
 ## Open
-- [ ] `notification-panel`: 82d8032 loaded (bug-finder fixes, not pushed); next = visual
-  check (NEW highlight, expand/collapse, undo line), push, maybe a 2.0.0
-  CHANGELOG/manifest bump. Live action buttons PARKED
+- [ ] `notification-panel`: 2.0.0 at 6a82570, loaded; tests pass (60 unit, 31 e2e checks).
+  Next = push 6a82570; optional e2e for Spanish UI and mouse. Live action buttons PARKED
   (minimal Service.qml patch vs upstream API request)
   -> `claude/workstreams/notification-panel.md`

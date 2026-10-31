@@ -8,7 +8,7 @@ standing rules and one `## Open` line per topic.
 
 | Workstream | State |
 |---|---|
-| `notification-panel` | Panel features loaded at 82d8032 (groups, search, shortcuts, undo, NEW highlight, expand/collapse, captured images); bug-finder findings fixed. Owed: visual check, push. Live action buttons parked. |
+| `notification-panel` | 2.0.0 at 6a82570, loaded in the live shell; 60 unit tests (mutation 92/94) and a 31-check e2e smoke test on a hidden desktop, all passing. Owed: push 6a82570. Live action buttons parked. |
 
 ## Next actions
 

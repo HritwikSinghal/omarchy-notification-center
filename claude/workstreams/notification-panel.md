@@ -1,56 +1,38 @@
 ---
 name: notification-panel
 description: Notification history panel -- this fork of the gabodev.notification-center Omarchy/Quickshell plugin: search, app groups, keyboard nav, Ctrl shortcuts, undo stack, new-since-open highlight, expand/collapse all, captured notification images (bus-monitor helper), card-sized window for 240Hz, GPLv3 relicense; plus the parked "live notifications with app action buttons" (mail Delete / Mark read) decision
-status: active (resume point at top); live action buttons PARKED 2026-10-31
+status: active, 2.0.0 shipped (resume point at top); live action buttons PARKED 2026-10-31
 ---
 
 # Notification history panel
 
-## Resume point (2026-10-31)
-Plugin code `82d8032` installed and loaded (not pushed; `0322629` is).
-Licence is GPL-3.0-or-later (LICENSE); upstream's MIT notice is kept in LICENSE.MIT for
-code through 7ec034b. Built on top of upstream 7ec034b:
-- Group by app (collapsible, animated by row height), search, keyboard nav (arrows by row,
-  Tab by group, Enter, Delete / Shift+Delete, Left/Right fold, Esc steps back), round close
-  buttons on rows and groups, Adwaita Sans type scale (Fonts.js), card-sized window,
-  drop-down open/close, debug logging + IPC (Debug.js).
-- Every notification's own image via a bus-monitor helper (capture/notify-capture.py,
-  Images.js, ImageCapture.qml); raw image-data is box-filtered to 160px (a 1280px cover:
-  2.3 MB -> 44 KB, 0.11 s). Verified on real rows: tidal-hifi covers and omasnap screenshots.
-- Footer shortcuts; one table in Shortcuts.js drives both the keys and the hint under each
-  button: Ctrl+M mark read, Ctrl+D close all, Ctrl+L clear, Ctrl+E expand all (toggle;
-  newest 5 per group or all its unread), Ctrl+Shift+E collapse all, Esc close. Handled in
-  SearchField's Keys.onPressed, where focus always sits.
-- Undo stack (Ctrl+Z, 10 s after the last action) for every removal: Delete, Shift+Delete,
-  row/group close, Clear history, Close all. History.undoHide reverses only what one step
-  changed. Clear / Close all keep the panel open so the undo line is seen.
-- NEW tier: rows after `lastOpened` (stamped on panel close) or `lastSeen`, whichever is
-  later: accent bar + stronger fill + bold title, "N new" on group headers and the header
-  pill; the bell badge counts NEW only.
-- The MPRIS track-cover cache (Art.js / ArtRecorder.qml) was removed: tidal-hifi sends its
-  cover as image-data, which the capture helper keeps.
+## Resume point (2026-10-31, end of session)
+Release 2.0.0 at `6a82570`, installed and loaded; `bd1ce09` and earlier are pushed,
+`6a82570` (and this tracker update) are not. Licence GPL-3.0-or-later; upstream's MIT
+notice kept in LICENSE.MIT for code through 7ec034b. User-facing behaviour is documented
+in README.md and CHANGELOG.md (2.0.0); this file keeps only what those don't.
 
-- Bug-finder pass over `7ec034b..357e06d` (2026-10-31), fixed in `82d8032`: image cleanup
-  deleting a pending call's image (reproduced, fixed, re-run passes); new/unread/clear
-  judged by arrival `ts` although a row enters history at popup close (now `enteredAt` =
-  max(ts, closed_ts)); folds moving the selection into another group; malformed bus
-  messages crashing the helper; `file://` URLs not percent-decoded; no byte cap on the
-  cache (now 200 MB); ImageCapture ignoring XDG_CACHE_HOME. Under Expand all, unfolding
-  a group by hand (header or Right) shows all its rows.
-
-- Found by the new tests (2026-10-31): the bell never reloaded on a first run (config.json
-  missing at start; FileView does not watch a missing file -> retry timer until it exists,
-  verified in nce); a removal could move the selection into another group when it
-  reordered the groups (History.neighbourInGroup); `png_from_pixels` turned an int into
-  zero bytes. Ctrl+E now cycles preview -> every row -> preview (`expandFull`).
+State of the work:
+- Features: app groups, search, keyboard nav, footer shortcuts from one table
+  (Shortcuts.js; Ctrl+M/D/L, Ctrl+E cycles preview -> every row -> preview, Ctrl+Shift+E
+  collapse, Esc), undo stack for every removal (History.undoHide), NEW tier by
+  `lastOpened`, captured notification images (capture/notify-capture.py, 160px thumbs,
+  200 MB cap), bell counts NEW only.
+- Tests: `tests/run.sh` = 60 unit tests (32 JS, 28 Python), mutation score 92/94 (the 2
+  survivors: an equivalent mutant, and main() not calling expire(), which only a live
+  busctl run reaches). `tests/e2e/smoke.py OUT` = 31 checks + 8 screenshots on the hidden
+  desktop (`tests/e2e/nce`); last run all pass and screenshots reviewed. Runbook and
+  screenshot checklist: `docs/TESTING.md`.
+- Bugs fixed today, by the bug-finder pass (`82d8032`) and by the new tests (`6a82570`):
+  see CHANGELOG "Fixed" and the commit bodies. Not in the changelog: the helper's
+  pending-image race, malformed bus messages, `file://` decoding, safeImage `..`, int pixel
+  data.
 
 Next:
-1. Visual check of the loaded build: NEW highlight, expand/collapse incl. unfolding one
-   group fully, undo line, Spanish footer fit.
-2. Push 82d8032 when the maintainer says so.
-3. CHANGELOG.md and manifest.json still say upstream's 1.0.0 / gabodev; a 2.0.0 entry
-   is suggested, not agreed.
-4. Parked: live action buttons (below).
+1. Push `6a82570` and the tracker commit when the maintainer says so.
+2. Optional: e2e coverage for the Spanish interface (Omarchy language file) and mouse
+   clicks (needs a pointer tool such as wlrctl; none installed).
+3. Parked: live action buttons (below).
 
 Debugging: `omarchy-shell notification-center debug on|off` (persisted in
 `~/.config/omarchy/gabodev.notification-center/debug`), `omarchy-shell notification-center
