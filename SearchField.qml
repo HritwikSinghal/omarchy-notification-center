@@ -3,13 +3,15 @@ import qs.Commons
 import qs.Commons as Commons
 
 import "Fonts.js" as Fonts
+import "Shortcuts.js" as Shortcuts
 
 // The search line: the panel filters rows by app, title and body as you type
 // (History.matchesQuery). A plain TextInput rather than the shell's
 // FilterInput, which is append-only because the menu owns the arrow keys; here
 // the query is ordinary editable text. It also carries the list's keyboard
-// navigation (arrows by row, Tab by group, Enter, Delete); Esc steps back
-// selection, query, panel.
+// navigation (arrows by row, Tab by group, Enter, Delete) and the footer
+// actions' Ctrl shortcuts (Shortcuts.js); Esc steps back selection, query,
+// panel.
 Rectangle {
   id: root
 
@@ -28,6 +30,8 @@ Rectangle {
   signal deleteRequested(bool wholeGroup)
   signal collapseRequested(bool collapse)
   signal clearSelectionRequested()
+  // A footer action by its Shortcuts.actions name: markRead, closeAll, clear.
+  signal shortcutPressed(string action)
 
   function focusInput() { input.forceActiveFocus() }
   function clear() { input.text = "" }
@@ -75,6 +79,17 @@ Rectangle {
     font.pixelSize: Fonts.px(Style.font.body, Fonts.body)
     clip: true
     selectByMouse: true
+
+    // Letters have no specific Keys handler, so they arrive here, and Keys
+    // runs before the input's own editing; anything else falls through.
+    Keys.onPressed: function(event) {
+      var others = event.modifiers & (Qt.ShiftModifier | Qt.AltModifier | Qt.MetaModifier)
+      var action = Shortcuts.actionFor(event.key, (event.modifiers & Qt.ControlModifier) !== 0, others !== 0)
+      if (action === "")
+        return
+      root.shortcutPressed(action)
+      event.accepted = true
+    }
 
     Keys.onUpPressed: function(event) { root.navigateRequested(-1); event.accepted = true }
     Keys.onDownPressed: function(event) { root.navigateRequested(1); event.accepted = true }

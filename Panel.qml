@@ -459,6 +459,11 @@ Item {
           onDeleteRequested: function(wholeGroup) { wholeGroup ? historyList.dismissSelectedGroup() : historyList.dismissSelected() }
           onCollapseRequested: function(collapse) { historyList.setSelectedGroupCollapsed(collapse) }
           onClearSelectionRequested: historyList.clearSelection()
+          onShortcutPressed: function(action) {
+            if (action === "markRead") root.markRead()
+            else if (action === "closeAll") root.closeAll()
+            else if (action === "clear") root.clearHistory()
+          }
         },
         HistoryList {
           id: historyList
