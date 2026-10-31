@@ -7,10 +7,11 @@ import qs.Ui
 
 import "History.js" as History
 
-// Bar bell: unread count from the history Omarchy keeps, left-click opens this
-// plugin's panel, right-click flips Omarchy's own quiet mode. Quiet is read
-// from the file the notifications service writes, because a third-party bar
-// widget is only handed a capability-scoped service facade.
+// Bar bell: count of notifications new since the panel last closed, from the
+// history Omarchy keeps; left-click opens this plugin's panel, right-click
+// flips Omarchy's own quiet mode. Quiet is read from the file the
+// notifications service writes, because a third-party bar widget is only
+// handed a capability-scoped service facade.
 WidgetButton {
   id: root
 
@@ -55,16 +56,19 @@ WidgetButton {
   // Local view state, persisted by the panel. Parsing and filtering live in
   // History.js so the bell and the panel cannot drift apart.
   property double lastSeen: 0
+  property double lastOpened: 0
   property double clearedAt: 0
   property var hidden: ({})
 
   function historyState() {
-    return { version: 2, lastSeen: root.lastSeen, clearedAt: root.clearedAt, hidden: root.hidden }
+    return { version: 2, lastSeen: root.lastSeen, lastOpened: root.lastOpened, clearedAt: root.clearedAt, hidden: root.hidden }
   }
 
-  readonly property int unread: History.unreadCount(root.allEntries, root.historyState())
+  // The badge counts what arrived since the panel last closed, so a number on
+  // the bell always means something not looked at yet ("new" is reserved).
+  readonly property int fresh: History.newCount(root.allEntries, root.historyState())
   readonly property string badge:
-    root.unread > 99 ? "99+" : (root.unread > 0 ? String(root.unread) : "")
+    root.fresh > 99 ? "99+" : (root.fresh > 0 ? String(root.fresh) : "")
 
   // Omarchy's quiet mode, mirrored from its own state file. A missing or
   // malformed file means DND is off, which is also what the service assumes.
@@ -87,6 +91,7 @@ WidgetButton {
   function applyConfig(raw) {
     var state = History.parseConfig(raw, Date.now() / 1000)
     root.lastSeen = state.lastSeen
+    root.lastOpened = state.lastOpened
     root.clearedAt = state.clearedAt
     root.hidden = state.hidden
   }
@@ -109,11 +114,11 @@ WidgetButton {
 
   function tooltip() {
     if (root.dnd)
-      return root.unread > 0
-        ? strings.t("bell.silencedUnread").arg(Commons.I18n.formatNumber(root.unread))
+      return root.fresh > 0
+        ? strings.t("bell.silencedNew").arg(Commons.I18n.formatNumber(root.fresh))
         : strings.t("bell.silenced")
-    return root.unread > 0
-      ? strings.t("bell.unread").arg(Commons.I18n.formatNumber(root.unread))
+    return root.fresh > 0
+      ? strings.t("bell.new").arg(Commons.I18n.formatNumber(root.fresh))
       : strings.t("bell.history")
   }
 

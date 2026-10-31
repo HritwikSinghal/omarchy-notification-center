@@ -11,7 +11,7 @@
 //   omarchy-shell notification-center state
 //
 // Areas: panel (open/close, actions), history (loads), list (model sync,
-// selection), search, art (cover cache), capture (image helper).
+// selection), search, capture (image helper).
 
 var enabled = false
 

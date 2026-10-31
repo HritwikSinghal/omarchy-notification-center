@@ -3,7 +3,6 @@ import qs.Commons
 import qs.Commons as Commons
 
 import "Fonts.js" as Fonts
-import "Art.js" as Art
 import "Debug.js" as Debug
 import "History.js" as History
 import "Images.js" as Images
@@ -16,11 +15,14 @@ Column {
   required property var tr
   property var rows: []
   property real lastSeen: 0
+  // Rows after this arrived since the panel last closed: drawn as new, and
+  // counted on their group's header.
+  property real newSince: 0
+  readonly property var newByApp: History.countByApp(root.rows, root.newSince)
+  readonly property var unreadByApp: History.countByApp(root.rows, root.lastSeen)
 
   readonly property real rowHeight: Style.space(88)
   readonly property real headerHeight: Style.space(36)
-  // The panel's track-cover cache (ArtRecorder); media rows look theirs up.
-  property var artEntries: []
   // Images notifications carried (ImageCapture); a row's own image wins.
   property var imageEntries: []
   // What the empty state says: the panel swaps in "no matches" while searching.
@@ -31,12 +33,22 @@ Column {
   // Rows grouped by app (History.groupByApp). A collapsed group keeps its
   // header and newest row. Collapse state lives only as long as the panel.
   property var collapsed: []
+  // Expand all (Ctrl+E): every group open, but showing only its newest
+  // previewRows rows, or all its unread ones when there are more. Toggling it
+  // off restores the collapse state it replaced.
+  property bool expandAll: false
+  property var collapsedBeforeExpand: []
+  readonly property int previewRows: 5
   readonly property var grouped: History.groupByApp(root.rows)
   readonly property var items: {
     var out = []
     for (var i = 0; i < root.grouped.length && out.length < 100; i++) {
       var item = root.grouped[i]
-      if (item.groupStart || root.collapsed.indexOf(History.appKey(item.row)) < 0) out.push(item)
+      var key = History.appKey(item.row)
+      if (item.groupStart) out.push(item)
+      else if (root.collapsed.indexOf(key) >= 0) continue
+      else if (!root.expandAll) out.push(item)
+      else if (item.groupIndex < Math.max(root.previewRows, root.unreadByApp[key] || 0)) out.push(item)
     }
     return out
   }
@@ -193,6 +205,26 @@ Column {
       if (History.appKey(row) === key && row.key) keys.push(String(row.key))
     }
     if (keys.length > 0) root.removeGroupRequested(keys)
+  }
+
+  function toggleExpandAll() {
+    if (root.expandAll) {
+      root.expandAll = false
+      root.collapsed = root.collapsedBeforeExpand
+      return
+    }
+    root.collapsedBeforeExpand = root.collapsed
+    root.collapsed = []
+    root.expandAll = true
+  }
+
+  // Every group down to its header and newest row; ends Expand all.
+  function collapseAll() {
+    var keys = []
+    for (var i = 0; i < root.grouped.length; i++)
+      if (root.grouped[i].groupStart) keys.push(History.appKey(root.grouped[i].row))
+    root.expandAll = false
+    root.collapsed = keys
   }
 
   function toggleGroup(key) {
@@ -398,6 +430,17 @@ Column {
               textFormat: Text.PlainText
               anchors.verticalCenter: parent.verticalCenter
             }
+            Text {
+              readonly property int fresh: root.newByApp[entry.groupKey] || 0
+              visible: fresh > 0
+              text: root.tr.t("panel.new").arg(Commons.I18n.formatNumber(fresh))
+              color: Commons.Color.accent
+              font.family: Fonts.text
+              font.pixelSize: Fonts.px(Style.font.body, Fonts.small)
+              font.bold: true
+              textFormat: Text.PlainText
+              anchors.verticalCenter: parent.verticalCenter
+            }
           }
 
           DismissButton {
@@ -414,7 +457,7 @@ Column {
           tr: root.tr
           row: entry.row
           isUnread: Number(entry.row.ts || 0) > root.lastSeen
-          artUrl: Art.lookup(root.artEntries, entry.row)
+          isNew: Number(entry.row.ts || 0) > root.newSince
           imageUrl: Images.lookup(root.imageEntries, entry.row)
           // A row folding away is never the selection, whatever index Qt gives it.
           selected: entry.lookup !== undefined && entry.index === root.currentIndex

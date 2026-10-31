@@ -1,6 +1,8 @@
 {
   "panel.title": "Notification history",
   "panel.unread": "%1 unread",
+  "panel.new": "%1 new",
+  "panel.newUnread": "%1 new \u00b7 %2 unread",
   "panel.allRead": "%1 total",
   "panel.empty": "Nothing yet. Notifications Omarchy has shown will be listed here.",
   "panel.markRead": "Mark all read",
@@ -11,14 +13,20 @@
   "time.days": "%1 d ago",
   "panel.closeAll": "Close all",
   "panel.clear": "Clear history",
+  "panel.expandAll": "Expand all",
+  "panel.collapseAll": "Collapse all",
   "panel.otherApp": "Other",
   "bell.history": "Notification history",
-  "bell.unread": "%1 unread",
+  "bell.new": "%1 new",
   "bell.silenced": "Notifications silenced",
-  "bell.silencedUnread": "%1 unread · notifications silenced",
+  "bell.silencedNew": "%1 new \u00b7 notifications silenced",
   "panel.navigationUnavailable": "This notification can’t be opened safely.",
   "panel.search": "Search app, title or body",
   "panel.noMatches": "No notifications match.",
+  "panel.removed": {
+    "one": "Removed %1 notification. %2 to undo",
+    "other": "Removed %1 notifications. %2 to undo"
+  },
   "panel.cleared": {
     "one": "Cleared %1 notification. %2 to undo",
     "other": "Cleared %1 notifications. %2 to undo"

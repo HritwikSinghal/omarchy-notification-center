@@ -11,6 +11,8 @@ Item {
 
   required property var tr
   property int unread: 0
+  // New since the panel last closed; always a subset of unread.
+  property int fresh: 0
   property int total: 0
 
   width: parent ? parent.width : 0
@@ -43,9 +45,14 @@ Item {
     Text {
       id: pillLabel
       anchors.centerIn: parent
-      text: root.unread > 0
-            ? root.tr.t("panel.unread").arg(Commons.I18n.formatNumber(root.unread))
-            : root.tr.t("panel.allRead").arg(Commons.I18n.formatNumber(root.total))
+      text: root.fresh > 0
+            ? (root.fresh < root.unread
+               ? root.tr.t("panel.newUnread").arg(Commons.I18n.formatNumber(root.fresh))
+                                             .arg(Commons.I18n.formatNumber(root.unread))
+               : root.tr.t("panel.new").arg(Commons.I18n.formatNumber(root.fresh)))
+            : root.unread > 0
+              ? root.tr.t("panel.unread").arg(Commons.I18n.formatNumber(root.unread))
+              : root.tr.t("panel.allRead").arg(Commons.I18n.formatNumber(root.total))
       color: root.unread > 0 ? Commons.Color.accent : Util.alpha(Commons.Color.popups.text, 0.7)
       font.family: Fonts.text
       font.pixelSize: Fonts.px(Style.font.body, Fonts.small)

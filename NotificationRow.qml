@@ -6,18 +6,20 @@ import qs.Commons as Commons
 
 import "Fonts.js" as Fonts
 
-// One notification: hover and unread fills, the unread dot, the app thumbnail,
-// the metadata and text, the relative time, and the per-row close. It reads the
-// row it is given and reports gestures; it never acts on one itself.
+// One notification: hover, new and unread fills, the new bar, the unread dot,
+// the app thumbnail, the metadata and text, the relative time, and the per-row
+// close. It reads the row it is given and reports gestures; it never acts on
+// one itself.
 Rectangle {
   id: rowItem
 
   required property var tr
   property var row: ({})
   property bool isUnread: false
+  // Arrived since the panel last closed: drawn stronger than unread, with an
+  // accent bar on the left edge and a bold title. New rows are unread too.
+  property bool isNew: false
   property real rowHeight: Style.space(88)
-  // The track's cover for a media row, from the panel's art cache; "" for none.
-  property string artUrl: ""
   // The image the notification itself carried (ImageCapture); "" for none.
   property string imageUrl: ""
 
@@ -66,7 +68,9 @@ Rectangle {
          ? Util.alpha(Commons.Color.accent, 0.16)
          : rowHover.hovered
            ? Util.alpha(Commons.Color.popups.text, 0.06)
-           : (rowItem.isUnread ? Util.alpha(Commons.Color.accent, 0.07) : "transparent")
+           : rowItem.isNew
+             ? Util.alpha(Commons.Color.accent, 0.14)
+             : (rowItem.isUnread ? Util.alpha(Commons.Color.accent, 0.07) : "transparent")
   border.width: rowItem.selected ? 1 : 0
   border.color: Util.alpha(Commons.Color.accent, 0.6)
 
@@ -86,6 +90,19 @@ Rectangle {
     onClicked: rowItem.activated()
   }
 
+  // New bar, along the left edge inside the row's rounding.
+  Rectangle {
+    anchors.left: parent.left
+    anchors.top: parent.top
+    anchors.bottom: parent.bottom
+    anchors.topMargin: Style.space(8)
+    anchors.bottomMargin: Style.space(8)
+    width: Style.space(3)
+    radius: width / 2
+    color: Commons.Color.accent
+    visible: rowItem.isNew
+  }
+
   // Unread dot
   Rectangle {
     id: dot
@@ -101,9 +118,9 @@ Rectangle {
   }
 
   // Thumbnail: the image the notification carried (a screenshot, a cover),
-  // else the track's cover for a media row (Art.js), with the app's icon as a
-  // corner badge; else the app's icon; else the row's glyph (or a bell) on a
-  // tile. An image that fails to load falls back to the icon.
+  // with the app's icon as a corner badge; else the app's icon; else the row's
+  // glyph (or a bell) on a tile. An image that fails to load falls back to the
+  // icon.
   Rectangle {
     id: thumb
     anchors.left: dot.right
@@ -121,8 +138,7 @@ Rectangle {
     Image {
       id: cover
       anchors.fill: parent
-      // The notification's own image first, else a track cover.
-      source: rowItem.imageUrl !== "" ? rowItem.imageUrl : rowItem.artUrl
+      source: rowItem.imageUrl
       sourceSize.width: width * 2
       sourceSize.height: height * 2
       fillMode: Image.PreserveAspectCrop
@@ -217,7 +233,7 @@ Rectangle {
       color: Commons.Color.popups.text
       font.family: Fonts.text
       font.pixelSize: Fonts.px(Style.font.body, Fonts.summary)
-      font.weight: Font.DemiBold
+      font.weight: rowItem.isNew ? Font.Bold : Font.DemiBold
       wrapMode: Text.WordWrap
       maximumLineCount: 1
       elide: Text.ElideRight

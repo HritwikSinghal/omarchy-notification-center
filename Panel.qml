@@ -42,11 +42,6 @@ Item {
     id: navigator
   }
 
-  // Track covers for media rows; always running, since the panel stays loaded.
-  ArtRecorder {
-    id: artRecorder
-  }
-
   // Images notifications carried, which Omarchy's history drops; every row
   // whose notification had one shows it (ImageCapture, Images.js).
   ImageCapture {
@@ -83,12 +78,12 @@ Item {
       history: { source: (root.notifService && root.notifService.historyLoaded) ? "service" : "file",
                  all: root.allEntries.length, visible: root.entries.length,
                  shown: root.shownEntries.length, loadFailed: root.historyLoadFailed },
-      view: { lastSeen: root.lastSeen, clearedAt: root.clearedAt,
-              hidden: Object.keys(root.hidden || {}).length, unread: root.unread },
+      view: { lastSeen: root.lastSeen, lastOpened: root.lastOpened, clearedAt: root.clearedAt,
+              hidden: Object.keys(root.hidden || {}).length, unread: root.unread, fresh: root.fresh },
       search: root.query,
       list: { items: historyList.shownCount, selectedKey: historyList.selectedKey,
+              expandAll: historyList.expandAll,
               currentIndex: historyList.currentIndex, collapsed: historyList.collapsed },
-      art: { entries: artRecorder.entries.length, loaded: artRecorder.loaded },
       capture: { running: imageCapture.running, images: imageCapture.entries.length,
                  restarts: imageCapture.restarts, lastError: imageCapture.lastError,
                  script: imageCapture.scriptPath }
@@ -125,6 +120,8 @@ Item {
 
   // Local view state, persisted.
   property double lastSeen: 0
+  // When the panel last closed; rows after it are new (History.newSince).
+  property double lastOpened: 0
   property double clearedAt: 0
   property var hidden: ({})
   property bool configReady: false
@@ -134,13 +131,18 @@ Item {
 
   property string navigationFeedback: ""
 
-  // The last clear (Clear history or Close all) while it can still be undone:
-  // { before, after, count }, else null. The footer says so and how.
-  property var lastClear: null
+  // Removals that Ctrl+Z can still take back, oldest first: a row (Delete or
+  // its close), a group (Shift+Delete or its close), or every row (Clear
+  // history, Close all). Each is { before, after, count, kind }. The stack
+  // empties undoWindow after the last removal or undo; the footer names the
+  // newest entry and the key.
+  property var undoStack: []
   readonly property int undoWindow: 10000
-  readonly property string undoText: root.lastClear
-    ? strings.tn("panel.cleared", root.lastClear.count)
-        .arg(Commons.I18n.formatNumber(root.lastClear.count))
+  readonly property int undoLimit: 20
+  readonly property var lastUndo: root.undoStack.length > 0 ? root.undoStack[root.undoStack.length - 1] : null
+  readonly property string undoText: root.lastUndo
+    ? strings.tn(root.lastUndo.kind === "cleared" ? "panel.cleared" : "panel.removed", root.lastUndo.count)
+        .arg(Commons.I18n.formatNumber(root.lastUndo.count))
         .arg(Shortcuts.actions.undo.label)
     : ""
   readonly property var entries: History.visibleRows(root.allEntries, root.historyState())
@@ -151,13 +153,16 @@ Item {
   readonly property var shownEntries: History.filterRows(root.entries, root.query)
 
   readonly property int unread: History.unreadCount(root.allEntries, root.historyState())
+  // Rows new since the panel last closed ("new" is reserved in JS).
+  readonly property int fresh: History.newCount(root.allEntries, root.historyState())
 
   function historyState() {
-    return { version: 2, lastSeen: root.lastSeen, clearedAt: root.clearedAt, hidden: root.hidden };
+    return { version: 2, lastSeen: root.lastSeen, lastOpened: root.lastOpened, clearedAt: root.clearedAt, hidden: root.hidden };
   }
 
   function applyHistoryState(state) {
     root.lastSeen = Number(state.lastSeen) || 0;
+    root.lastOpened = Number(state.lastOpened) || 0;
     root.clearedAt = Number(state.clearedAt) || 0;
     root.hidden = state.hidden || ({});
   }
@@ -238,13 +243,26 @@ Item {
     root.dismiss();
   }
 
+  // Applies a removal and remembers the view state on either side of it, so
+  // undoLast can reverse just that step (History.undoHide).
+  function removeUndoably(change, count, kind) {
+    var before = root.historyState();
+    root.mutateHistory(change);
+    // A removal queued before the config loaded has no settled state to undo to.
+    if (!root.configReady)
+      return;
+    var stack = root.undoStack.concat([{ before: before, after: root.historyState(), count: count, kind: kind }]);
+    root.undoStack = stack.slice(Math.max(0, stack.length - root.undoLimit));
+    undoTimer.restart();
+  }
+
   function hideEntry(key) {
     Debug.log("panel", "hide", key);
     var k = String(key || "");
     if (k === "")
       return;
     var at = Date.now() / 1000;
-    root.mutateHistory(function(state) { return History.hide(state, k, at); });
+    root.removeUndoably(function(state) { return History.hide(state, k, at); }, 1, "removed");
   }
 
   // A whole group at once: one state change and one save, not one per row.
@@ -255,32 +273,22 @@ Item {
     if (list.length === 0)
       return;
     var at = Date.now() / 1000;
-    root.mutateHistory(function(state) {
+    root.removeUndoably(function(state) {
       var next = state;
       for (var i = 0; i < list.length; i++)
         next = History.hide(next, list[i], at);
       return next;
-    });
+    }, list.length, "removed");
   }
 
-  // Hides every visible row and remembers the view state on either side, so
-  // undoClear can reverse just this clear (History.undoClear).
+  // Hides every visible row, undoably.
   function clearVisible() {
     var rows = root.entries.slice();
     // Nothing to hide; a second press must not cancel the pending undo.
     if (rows.length === 0)
       return;
     var at = Date.now() / 1000;
-    var before = root.historyState();
-    root.mutateHistory(function(state) { return History.clear(state, rows, at); });
-    // A clear queued before the config loaded has no settled state to undo to.
-    root.lastClear = root.configReady
-      ? { before: before, after: root.historyState(), count: rows.length }
-      : null;
-    if (root.lastClear)
-      undoTimer.restart();
-    else
-      undoTimer.stop();
+    root.removeUndoably(function(state) { return History.clear(state, rows, at); }, rows.length, "cleared");
   }
 
   // Undo brings the rows back to the panel; popups Close all dismissed stay
@@ -297,15 +305,20 @@ Item {
     root.clearVisible();
   }
 
-  function undoClear() {
-    var record = root.lastClear;
+  // Takes back the newest removal; another Ctrl+Z takes back the one before.
+  // Each undo restarts the window so the next one is not rushed.
+  function undoLast() {
+    var record = root.lastUndo;
     if (!record)
       return;
-    Debug.log("panel", "undo clear", record.count, "rows");
-    root.lastClear = null;
-    undoTimer.stop();
+    Debug.log("panel", "undo", record.kind, record.count, "rows");
+    root.undoStack = root.undoStack.slice(0, -1);
+    if (root.undoStack.length > 0)
+      undoTimer.restart();
+    else
+      undoTimer.stop();
     var at = Date.now() / 1000;
-    root.mutateHistory(function(state) { return History.undoClear(state, record.before, record.after, at); });
+    root.mutateHistory(function(state) { return History.undoHide(state, record.before, record.after, at); });
   }
 
   // Persisted history has no live notification action or message deep link. A
@@ -370,7 +383,7 @@ Item {
   Timer {
     id: undoTimer
     interval: root.undoWindow
-    onTriggered: root.lastClear = null
+    onTriggered: root.undoStack = []
   }
 
   FileView {
@@ -426,7 +439,17 @@ Item {
     id: closeHold
     interval: surface.motionDuration
   }
-  onOpenedChanged: if (!root.opened) closeHold.restart(); else closeHold.stop()
+  onOpenedChanged: {
+    if (root.opened) {
+      closeHold.stop();
+      return;
+    }
+    closeHold.restart();
+    // Whatever was on screen has been seen: it stops being new, and the
+    // bell's count drops to what arrives from here on.
+    var at = Date.now() / 1000;
+    root.mutateHistory(function(state) { return History.markOpened(state, at); });
+  }
 
   // Two surfaces: a static, transparent full-screen catcher that only closes
   // the panel on a click outside the card, and the card in a window of its
@@ -485,13 +508,14 @@ Item {
         HistoryHeader {
           tr: strings
           unread: root.unread
+          fresh: root.fresh
           total: root.entries.length
         },
         SearchField {
           id: searchField
           tr: strings
           hasSelection: historyList.hasSelection
-          canUndoClear: root.lastClear !== null
+          canUndo: root.undoStack.length > 0
           // A new query reshuffles the rows, so a selection would land on an
           // unrelated one; start over instead.
           onTextChanged: {
@@ -509,17 +533,19 @@ Item {
             if (action === "markRead") root.markRead()
             else if (action === "closeAll") root.closeAll()
             else if (action === "clear") root.clearHistory()
-            else if (action === "undo") root.undoClear()
+            else if (action === "undo") root.undoLast()
+            else if (action === "expandAll") historyList.toggleExpandAll()
+            else if (action === "collapseAll") historyList.collapseAll()
           }
         },
         HistoryList {
           id: historyList
           tr: strings
           rows: root.shownEntries
-          artEntries: artRecorder.entries
           imageEntries: imageCapture.entries
           emptyText: root.query !== "" ? strings.t("panel.noMatches") : strings.t("panel.empty")
           lastSeen: root.lastSeen
+          newSince: History.newSince(root.historyState())
           // Two thirds of the screen: tall enough to scan a day's history,
           // short enough that the header and footer stay on screen.
           maxHeight: surface.screenHeight * 0.65
@@ -534,6 +560,9 @@ Item {
           onMarkReadRequested: root.markRead()
           onCloseAllRequested: root.closeAll()
           onClearRequested: root.clearHistory()
+          expandedAll: historyList.expandAll
+          onExpandAllRequested: historyList.toggleExpandAll()
+          onCollapseAllRequested: historyList.collapseAll()
           onDismissRequested: root.dismiss()
         }
       ]

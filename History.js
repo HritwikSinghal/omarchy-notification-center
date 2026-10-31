@@ -53,7 +53,7 @@ function parseConfig(text, now) {
     try { value = JSON.parse(raw) } catch (error) { value = null }
   }
   if (!value || typeof value !== "object" || Array.isArray(value))
-    return { version: CONFIG_VERSION, lastSeen: 0, clearedAt: 0, hidden: {} }
+    return { version: CONFIG_VERSION, lastSeen: 0, lastOpened: 0, clearedAt: 0, hidden: {} }
 
   var hidden = {}
   // v1 stored an array. Its keys remain valid; stamp migration with the load
@@ -69,6 +69,7 @@ function parseConfig(text, now) {
   return {
     version: CONFIG_VERSION,
     lastSeen: finite(value.lastSeen, 0),
+    lastOpened: finite(value.lastOpened, 0),
     clearedAt: finite(value.clearedAt, 0),
     hidden: pruneHidden(hidden, at)
   }
@@ -79,6 +80,7 @@ function serialiseConfig(state) {
   return JSON.stringify({
     version: CONFIG_VERSION,
     lastSeen: clean.lastSeen,
+    lastOpened: clean.lastOpened,
     clearedAt: clean.clearedAt,
     hidden: clean.hidden
   }, null, 2) + "\n"
@@ -111,6 +113,43 @@ function unreadCount(rows, state) {
   return unread
 }
 
+// A row is new when it arrived after the panel last closed. Mark all read
+// covers new rows too, so the cutoff is whichever of the two is later.
+function newSince(state) {
+  var current = stateCopy(state, nowSeconds())
+  return Math.max(current.lastOpened, current.lastSeen)
+}
+
+function newCount(rows, state) {
+  var cutoff = newSince(state)
+  var visible = visibleRows(rows, state)
+  var count = 0
+  for (var i = 0; i < visible.length; i++)
+    if (tsOf(visible[i]) > cutoff) count++
+  return count
+}
+
+// Rows per app (appKey) that arrived after `cutoff`: with newSince, the new
+// count on a group's header; with lastSeen, its unread count.
+function countByApp(rows, cutoff) {
+  var source = Array.isArray(rows) ? rows : []
+  var out = {}
+  for (var i = 0; i < source.length; i++) {
+    if (tsOf(source[i]) <= cutoff) continue
+    var key = appKey(source[i])
+    out[key] = (out[key] || 0) + 1
+  }
+  return out
+}
+
+// Stamped as the panel closes: what was on screen then is no longer new.
+function markOpened(state, now) {
+  var at = finite(now, nowSeconds())
+  var next = stateCopy(state, at)
+  next.lastOpened = Math.max(next.lastOpened, at)
+  return next
+}
+
 function hide(state, key, now) {
   var at = finite(now, nowSeconds())
   var next = stateCopy(state, at)
@@ -137,11 +176,12 @@ function clear(state, rows, now) {
   return next
 }
 
-// Reverses one clear, given the state just before it and just after it, on top
-// of whatever happened since: only what that clear changed is put back, so a
-// row hidden or a mark-read made afterwards survives the undo. Keys the clear
-// added are dropped unless re-hidden since; keys its pruning dropped return.
-function undoClear(state, before, after, now) {
+// Reverses one removal (hide, a group's hides, or clear), given the state just
+// before it and just after it, on top of whatever happened since: only what
+// that step changed is put back, so a row hidden or a mark-read made
+// afterwards survives the undo. Keys it added are dropped unless re-hidden
+// since; keys its pruning dropped return; a clear's watermark is restored.
+function undoHide(state, before, after, now) {
   var at = finite(now, nowSeconds())
   var next = stateCopy(state, at)
   var was = stateCopy(before, at)
@@ -191,7 +231,8 @@ function appKey(row) {
   return String((row && (row.app || row.source)) || "").trim().toLowerCase()
 }
 
-// Rows regrouped by app for display, as [{ row, groupStart, groupSize }]. The
+// Rows regrouped by app for display, as [{ row, groupStart, groupIndex,
+// groupSize }], groupIndex being the row's place in its group. The
 // input is newest first, so a group sits where its newest row stood and keeps
 // its rows newest first. A Map, not an object, so an app named "__proto__"
 // cannot reach the prototype.
@@ -206,7 +247,7 @@ function groupByApp(rows) {
   var out = []
   groups.forEach(function(members) {
     for (var j = 0; j < members.length; j++)
-      out.push({ row: members[j], groupStart: j === 0, groupSize: members.length })
+      out.push({ row: members[j], groupStart: j === 0, groupIndex: j, groupSize: members.length })
   })
   return out
 }

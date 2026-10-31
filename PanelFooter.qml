@@ -7,19 +7,23 @@ import "Shortcuts.js" as Shortcuts
 import qs.Ui
 
 // The bottom of the panel: temporary feedback, the rule before the actions, the
-// three list actions on the left and Close pinned to the right edge, each with
-// its keyboard shortcut written under it. Every action is reported upwards; the
-// panel decides what it does.
+// list and group actions on the left and Close pinned to the right edge, each
+// with its keyboard shortcut written under it. Every action is reported
+// upwards; the panel decides what it does.
 Column {
   id: root
 
   required property var tr
   property string feedback: ""
   property bool showRule: false
+  // Expand all is a toggle; its button stays lit while it is on.
+  property bool expandedAll: false
 
   signal markReadRequested()
   signal closeAllRequested()
   signal clearRequested()
+  signal expandAllRequested()
+  signal collapseAllRequested()
   signal dismissRequested()
 
   width: parent ? parent.width : 0
@@ -31,6 +35,7 @@ Column {
     id: action
 
     property alias text: button.text
+    property alias active: button.active
     property string shortcut: ""
     property color foreground: Commons.Color.popups.text
 
@@ -103,6 +108,19 @@ Column {
         text: root.tr.t("panel.clear")
         shortcut: Shortcuts.actions.clear.label
         onClicked: root.clearRequested()
+      }
+
+      ActionButton {
+        text: root.tr.t("panel.expandAll")
+        shortcut: Shortcuts.actions.expandAll.label
+        active: root.expandedAll
+        onClicked: root.expandAllRequested()
+      }
+
+      ActionButton {
+        text: root.tr.t("panel.collapseAll")
+        shortcut: Shortcuts.actions.collapseAll.label
+        onClicked: root.collapseAllRequested()
       }
     }
 

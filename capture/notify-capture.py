@@ -22,6 +22,7 @@ Standard library only. Exits when busctl exits; the panel restarts it.
 
 import hashlib
 import json
+import operator
 import os
 import struct
 import subprocess
@@ -37,6 +38,10 @@ LIMIT = 300                  # index entries kept
 MAX_AGE = 48 * 3600          # seconds an entry and its image are kept
 MAX_FILE = 20 * 1024 * 1024  # largest image file copied in
 MAX_PIXELS = 4096 * 4096     # largest image-data accepted
+# Longest side image-data is kept at. Rows draw images at 40px (decoded at
+# 80); a track cover arrives as raw 1280x1280 RGBA, 2.3 MB once written as
+# PNG, against tens of KB at this size.
+THUMB = 160
 PENDING_TTL = 30             # seconds a call waits for its reply
 DEBUG = os.environ.get("NC_DEBUG") == "1"
 
@@ -77,9 +82,43 @@ def store(data, ext):
     return "file://" + path
 
 
+def downscale(raw, width, height, stride, channels, limit=THUMB):
+    """Pixels box-filtered so the longer side is at most `limit`, as
+    (tightly packed bytes, width, height). Each output pixel averages the
+    block of input pixels it covers, so a photo shrinks without the
+    sparkle of nearest-neighbour. Channels are averaged unpremultiplied,
+    which can tint fully transparent edges; covers and screenshots are
+    opaque."""
+    span = width * channels
+    if max(width, height) <= limit:
+        packed = b"".join(raw[y * stride:y * stride + span] for y in range(height))
+        return packed, width, height
+    scale = max(width, height) / limit
+    out_w = max(1, round(width / scale))
+    out_h = max(1, round(height / scale))
+    cols = [(x * width // out_w, max(x * width // out_w + 1, (x + 1) * width // out_w))
+            for x in range(out_w)]
+    out = bytearray(out_w * out_h * channels)
+    for oy in range(out_h):
+        y0 = oy * height // out_h
+        y1 = max(y0 + 1, (oy + 1) * height // out_h)
+        # The block's rows summed column by column once per output row; map
+        # keeps the per-pixel work in C.
+        acc = [0] * span
+        for y in range(y0, y1):
+            acc = list(map(operator.add, acc, raw[y * stride:y * stride + span]))
+        base = oy * out_w * channels
+        for ox, (x0, x1) in enumerate(cols):
+            count = (y1 - y0) * (x1 - x0)
+            for c in range(channels):
+                out[base + ox * channels + c] = sum(acc[x0 * channels + c:x1 * channels:channels]) // count
+    return bytes(out), out_w, out_h
+
+
 def png_from_pixels(value):
     """image-data is (iiibiiay): width, height, rowstride, has_alpha,
-    bits_per_sample, channels, data. Only 8-bit RGB(A) is accepted."""
+    bits_per_sample, channels, data. Only 8-bit RGB(A) is accepted, and it
+    is shrunk to THUMB before encoding."""
     try:
         width, height, stride, has_alpha, bits, channels, pixels = value
     except (TypeError, ValueError):
@@ -91,7 +130,9 @@ def png_from_pixels(value):
     raw = bytes(pixels)
     if len(raw) < stride * (height - 1) + width * channels:
         return b""
-    rows = b"".join(b"\x00" + raw[y * stride:y * stride + width * channels] for y in range(height))
+    raw, width, height = downscale(raw, width, height, stride, channels)
+    span = width * channels
+    rows = b"".join(b"\x00" + raw[y * span:(y + 1) * span] for y in range(height))
 
     def chunk(kind, body):
         return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)

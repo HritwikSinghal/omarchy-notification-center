@@ -1,6 +1,8 @@
 {
   "panel.title": "Historial de notificaciones",
   "panel.unread": "%1 sin leer",
+  "panel.new": "%1 nuevas",
+  "panel.newUnread": "%1 nuevas \u00b7 %2 sin leer",
   "panel.allRead": "%1 en total",
   "panel.empty": "Nada todavía. Aquí aparecerán las notificaciones que muestre Omarchy.",
   "panel.markRead": "Marcar leídas",
@@ -11,14 +13,20 @@
   "time.days": "hace %1 d",
   "panel.closeAll": "Cerrar todas",
   "panel.clear": "Vaciar historial",
+  "panel.expandAll": "Expandir todo",
+  "panel.collapseAll": "Contraer todo",
   "panel.otherApp": "Otras",
   "bell.history": "Historial de notificaciones",
-  "bell.unread": "%1 sin leer",
+  "bell.new": "%1 nuevas",
   "bell.silenced": "Notificaciones silenciadas",
-  "bell.silencedUnread": "%1 sin leer · notificaciones silenciadas",
+  "bell.silencedNew": "%1 nuevas \u00b7 notificaciones silenciadas",
   "panel.navigationUnavailable": "Esta notificación no se puede abrir de forma segura.",
   "panel.search": "Buscar app, t\u00edtulo o texto",
   "panel.noMatches": "Ninguna notificaci\u00f3n coincide.",
+  "panel.removed": {
+    "one": "Se quit\u00f3 %1 notificaci\u00f3n. %2 para deshacer",
+    "other": "Se quitaron %1 notificaciones. %2 para deshacer"
+  },
   "panel.cleared": {
     "one": "Se ocult\u00f3 %1 notificaci\u00f3n. %2 para deshacer",
     "other": "Se ocultaron %1 notificaciones. %2 para deshacer"

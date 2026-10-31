@@ -20,9 +20,9 @@ Rectangle {
   // Whether the list has a keyboard selection. Enter and Delete act on it
   // only then; with none they edit the query as usual.
   property bool hasSelection: false
-  // Whether a clear can be undone. Ctrl+Z goes to the panel only then; with
+  // Whether a removal can be undone. Ctrl+Z goes to the panel only then; with
   // none it undoes typing as usual.
-  property bool canUndoClear: false
+  property bool canUndo: false
 
   signal dismissRequested()
   // Keyboard navigation of the list, which never takes focus itself: the
@@ -34,7 +34,7 @@ Rectangle {
   signal collapseRequested(bool collapse)
   signal clearSelectionRequested()
   // A footer action by its Shortcuts.actions name: markRead, closeAll, clear,
-  // undo.
+  // undo, expandAll, collapseAll.
   signal shortcutPressed(string action)
 
   function focusInput() { input.forceActiveFocus() }
@@ -87,9 +87,10 @@ Rectangle {
     // Letters have no specific Keys handler, so they arrive here, and Keys
     // runs before the input's own editing; anything else falls through.
     Keys.onPressed: function(event) {
-      var others = event.modifiers & (Qt.ShiftModifier | Qt.AltModifier | Qt.MetaModifier)
-      var action = Shortcuts.actionFor(event.key, (event.modifiers & Qt.ControlModifier) !== 0, others !== 0)
-      if (action === "" || (action === "undo" && !root.canUndoClear))
+      var others = event.modifiers & (Qt.AltModifier | Qt.MetaModifier)
+      var action = Shortcuts.actionFor(event.key, (event.modifiers & Qt.ControlModifier) !== 0,
+                                       (event.modifiers & Qt.ShiftModifier) !== 0, others !== 0)
+      if (action === "" || (action === "undo" && !root.canUndo))
         return
       root.shortcutPressed(action)
       event.accepted = true
